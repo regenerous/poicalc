@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f6f5f2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="POI">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="description" content="Point of impact for one zeroed rifle or pistol. Works from the Home Screen offline.">
+    <title>POI</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="apple-touch-icon" href="./icons/icon-180.png">
+    <link rel="icon" href="./icons/icon-192.png" type="image/png">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <div class="readout">
+          <h1>POI</h1>
+          <p id="drop-where" class="where"></p>
+          <p id="drop-value" class="drop" aria-live="polite"></p>
+        </div>
+        <div class="top-side">
+          <div class="units" role="radiogroup" aria-label="Units">
+            <button type="button" id="unit-imperial" role="radio" aria-checked="true">Imperial</button>
+            <button type="button" id="unit-metric" role="radio" aria-checked="false">Metric</button>
+          </div>
+          <p id="unit-hint" class="hint"></p>
+          <p class="remember">Remembered on this phone</p>
+        </div>
+      </header>
+
+      <section class="stage" aria-label="Point of impact">
+        <div class="target-wrap">
+          <svg id="target" viewBox="0 0 208 208" role="img"></svg>
+        </div>
+        <p id="target-caption" class="caption"></p>
+        <div class="chart-head">
+          <span id="chart-units"></span>
+          <span id="chart-readout"></span>
+        </div>
+        <div class="chart-frame">
+          <svg id="path" viewBox="0 0 356 156" role="img"></svg>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2>Ammunition</h2>
+        <div id="preset-selected"></div>
+        <div id="preset-grid" class="preset-grid"></div>
+
+        <div class="distance-block">
+          <div class="distance-head">
+            <span>Distance</span>
+            <span id="zero-note"></span>
+          </div>
+          <div class="stepper">
+            <button type="button" id="dist-dec" aria-label="Shorter distance">−</button>
+            <label class="dist-readout">
+              <input id="distance" inputmode="decimal" autocomplete="off" aria-label="Selected distance">
+              <span id="distance-unit"></span>
+            </label>
+            <button type="button" id="dist-inc" aria-label="Longer distance">+</button>
+          </div>
+        </div>
+
+        <div class="specs">
+          <label class="spec">
+            <span class="spec-value">
+              <input id="barrel" inputmode="decimal" autocomplete="off" aria-label="Barrel length">
+              <span id="barrel-unit"></span>
+            </span>
+            <span class="spec-name">Barrel</span>
+          </label>
+          <label class="spec">
+            <span class="spec-value">
+              <input id="sight" inputmode="decimal" autocomplete="off" aria-label="Optic height over bore">
+              <span id="sight-unit"></span>
+            </span>
+            <span class="spec-name">Optic height</span>
+          </label>
+          <label class="spec">
+            <span class="spec-value">
+              <input id="zero" inputmode="decimal" autocomplete="off" aria-label="Zero distance">
+              <span id="zero-unit"></span>
+            </span>
+            <span class="spec-name">Zero</span>
+          </label>
+        </div>
+        <p id="rule" class="rule"></p>
+        <button type="button" id="use-catalog" hidden>Use catalog speed</button>
+        <div class="fields">
+          <label class="field">
+            <span>Caliber</span>
+            <input id="caliber" autocomplete="off" autocapitalize="off" spellcheck="false">
+          </label>
+          <label class="field">
+            <span id="weight-label">Weight</span>
+            <input id="weight" inputmode="decimal" autocomplete="off">
+          </label>
+          <label class="field">
+            <span id="speed-label">Muzzle speed</span>
+            <input id="speed" inputmode="decimal" autocomplete="off">
+          </label>
+          <label class="field">
+            <span>G1 BC</span>
+            <input id="bc" inputmode="decimal" autocomplete="off">
+          </label>
+        </div>
+
+        <p class="footer">Home Screen app · works offline · <span id="version"></span></p>
+      </section>
+    </div>
+    <noscript>POI needs JavaScript to calculate the path.</noscript>
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
