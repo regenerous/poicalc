@@ -598,16 +598,27 @@ input {
 .play-control[data-mark="zero"] .dist-readout,
 .play-control[data-mark="paper"] .dist-readout { color: var(--text); }
 
-.play-control[data-mark="paper"] .stepper { margin-left: auto; }
-
-.paper-offset {
-  flex: 0 0 auto;
+.paper-hit {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   margin: 0;
-  text-align: right;
-  font-size: 13px;
-  line-height: 16px;
-  font-weight: 700;
   white-space: nowrap;
+}
+
+.paper-hit-label {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--secondary);
+}
+
+#paper-offset {
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 700;
 }
 
 .slider {

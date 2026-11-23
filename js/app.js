@@ -6,6 +6,7 @@ const KEY = "poicalc.setup";
 const GRAIN = 0.06479891;
 const RING_STEPS = [4, 6, 8, 10, 12, 16, 20, 30, 40, 60, 80, 120, 200, 400];
 const CUSTOM_LIMIT = 40;
+const MAX_YD = 500;
 
 const $ = (id) => document.getElementById(id);
 
@@ -90,11 +91,11 @@ function sanitize(data) {
   }
   next.barrelIn = clampNum(data.barrelIn, 2, 32, DEFAULTS.barrelIn);
   next.sightIn = clampNum(data.sightIn, 0, 6, DEFAULTS.sightIn);
-  next.zeroYd = clampNum(data.zeroYd, 5, 800, DEFAULTS.zeroYd);
-  next.paperYd = clampNum(data.paperYd, 5, 800, next.zeroYd);
-  let far = clampNum(data.farYd, 5, 1200, null);
-  let close = clampNum(data.closeYd, 5, 1200, null);
-  if (far == null) far = clampNum(data.distanceYd, 5, 1200, DEFAULTS.farYd);
+  next.zeroYd = clampNum(data.zeroYd, 5, MAX_YD, DEFAULTS.zeroYd);
+  next.paperYd = clampNum(data.paperYd, 5, MAX_YD, next.zeroYd);
+  let far = clampNum(data.farYd, 5, MAX_YD, null);
+  let close = clampNum(data.closeYd, 5, MAX_YD, null);
+  if (far == null) far = clampNum(data.distanceYd, 5, MAX_YD, DEFAULTS.farYd);
   if (close == null) close = DEFAULTS.closeYd;
   if (close === 100 && far === 300) {
     close = DEFAULTS.closeYd;
@@ -102,7 +103,7 @@ function sanitize(data) {
   }
   if (close > far) [close, far] = [far, close];
   if (far - close < 1) {
-    if (close + 1 <= 1200) far = close + 1;
+    if (close + 1 <= MAX_YD) far = close + 1;
     else close = far - 1;
   }
   next.closeYd = close;
@@ -140,11 +141,11 @@ function metric() {
 }
 
 function distanceBounds() {
-  return metric() ? [5 / 0.9144, 1000 / 0.9144] : [5, 1000];
+  return metric() ? [5 / 0.9144, MAX_YD] : [5, MAX_YD];
 }
 
 function zeroBounds() {
-  return metric() ? [5 / 0.9144, 800 / 0.9144] : [5, 800];
+  return metric() ? [5 / 0.9144, MAX_YD] : [5, MAX_YD];
 }
 
 function gapYd() {
@@ -472,7 +473,7 @@ function drawPath(poi) {
     ...mark,
     x: xOf(mark.yd),
     y: yOf(0),
-    text: `${mark.verb} ${formatDistanceNumber(mark.yd)} ${distanceUnit()}`,
+    text: formatSignedDrop(0),
   }));
   if (marksClose && placed.length === 2) {
     placed[0].labelY = 14;
@@ -493,13 +494,13 @@ function drawPath(poi) {
     `Side view. The bullet ${bits.join(" and ") || "stays off the line of sight"}. Close target distance at ${formatDistanceNumber(state.closeYd)} ${unit} is ${formatSignedDrop(closeIn)}. Far target distance at ${formatDistanceNumber(state.farYd)} ${unit} is ${formatSignedDrop(farIn)}.`,
   );
   const impactsNear = Math.abs(closeX - farX) < 72;
-  const impactLabel = (kind, x, y, yd) => {
+  const impactLabel = (kind, x, y, inches) => {
     const anchor = x < 70 ? "start" : x > width - 70 ? "end" : "middle";
     const textX = anchor === "start" ? x - 8 : anchor === "end" ? x + 8 : x;
     const lift = impactsNear && kind === "far" ? 28 : 14;
     const textY = Math.max(14, y - lift);
     const cls = kind === "far" ? "cross-label far-label" : "cross-label";
-    return `<text class="${cls}" data-distance="${kind}" x="${textX.toFixed(1)}" y="${textY.toFixed(1)}" text-anchor="${anchor}">${formatDistanceNumber(yd)} ${unit}</text>`;
+    return `<text class="${cls}" data-distance="${kind}" x="${textX.toFixed(1)}" y="${textY.toFixed(1)}" text-anchor="${anchor}">${formatSignedDrop(inches)}</text>`;
   };
 
   const markSvg = placed
@@ -536,8 +537,8 @@ function drawPath(poi) {
     ${markSvg}
     <circle class="mark-far" data-mark="far" data-distance="far" cx="${farX.toFixed(1)}" cy="${farY.toFixed(1)}" r="4.5"></circle>
     <circle class="mark-close" data-mark="close" data-distance="close" cx="${closeX.toFixed(1)}" cy="${closeY.toFixed(1)}" r="4.5"></circle>
-    ${impactLabel("close", closeX, closeY, state.closeYd)}
-    ${impactLabel("far", farX, farY, state.farYd)}
+    ${impactLabel("close", closeX, closeY, closeIn)}
+    ${impactLabel("far", farX, farY, farIn)}
     ${axisSvg}
   `;
 }
