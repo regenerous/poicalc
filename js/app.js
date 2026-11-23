@@ -467,9 +467,36 @@ function drawPath(poi) {
       x: xOf(mark.yd),
       y: yOf(0),
       r: nearImpact ? 7 : 3.5,
-      text: formatSignedDrop(0),
+      text: `${formatDistanceNumber(mark.yd)} ${distanceUnit()}`,
     };
   });
+  const inRange = shown.length ? shown : poi.samples;
+  let lowPoint = inRange[0];
+  let highPoint = inRange[0];
+  for (const point of inRange) {
+    if (point.inches < lowPoint.inches) lowPoint = point;
+    if (point.inches > highPoint.inches) highPoint = point;
+  }
+  const extrema = [];
+  if (lowPoint && highPoint) {
+    const seen = new Set();
+    for (const item of [
+      { kind: "min", yd: lowPoint.yd, inches: lowPoint.inches },
+      { kind: "max", yd: highPoint.yd, inches: highPoint.inches },
+    ]) {
+      const key = item.yd.toFixed(2);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const x = xOf(item.yd);
+      const y = yOf(item.inches);
+      const crowded =
+        Math.hypot(x - closeX, y - closeY) < 10 ||
+        Math.hypot(x - farX, y - farY) < 10 ||
+        placed.some((mark) => Math.hypot(x - mark.x, y - mark.y) < 10);
+      if (crowded) continue;
+      extrema.push({ ...item, x, y, r: 3.5 });
+    }
+  }
 
   const axis = [
     { yd: 0, role: "" },
@@ -492,6 +519,7 @@ function drawPath(poi) {
     { x: farX, y: farY, r: 6 },
     { x: xOf(0), y: yOf(-state.sightIn), r: 4 },
     ...placed.map((mark) => ({ x: mark.x, y: mark.y, r: mark.r + 1 })),
+    ...extrema.map((mark) => ({ x: mark.x, y: mark.y, r: mark.r + 1 })),
   ];
   const textWidth = (text) => text.length * 5.7 + 2;
   const boxFor = (x, y, wide, anchor) => {
@@ -544,6 +572,15 @@ function drawPath(poi) {
   const offsetLabels = [
     { kind: "close", cls: "cross-label", text: formatSignedDrop(closeIn), x: closeX, y: closeY, inches: closeIn, attr: "data-distance" },
     { kind: "far", cls: "cross-label far-label", text: formatSignedDrop(farIn), x: farX, y: farY, inches: farIn, attr: "data-distance" },
+    ...extrema.map((mark) => ({
+      kind: mark.kind,
+      cls: "cross-label",
+      text: formatSignedDrop(mark.inches),
+      x: mark.x,
+      y: mark.y,
+      inches: mark.inches,
+      attr: "data-extreme",
+    })),
     ...placed.map((mark) => ({
       kind: mark.kind,
       cls: "cross-label",
@@ -582,12 +619,16 @@ function drawPath(poi) {
   }
   const aimSvg = `<text class="aim-label" data-aim="line" x="${aimSpot.x.toFixed(1)}" y="${aimSpot.y.toFixed(1)}" text-anchor="${aimSpot.anchor}">${aimText}</text>`;
 
-  const markSvg = placed
-    .map(
+  const markSvg = [
+    ...placed.map(
       (mark) =>
         `<circle class="mark-open" data-mark="${mark.kind}" data-crossing="${mark.kind}" cx="${mark.x.toFixed(1)}" cy="${mark.y.toFixed(1)}" r="${mark.r}"></circle>`,
-    )
-    .join("");
+    ),
+    ...extrema.map(
+      (mark) =>
+        `<circle class="mark-open" data-mark="${mark.kind}" data-extreme="${mark.kind}" cx="${mark.x.toFixed(1)}" cy="${mark.y.toFixed(1)}" r="${mark.r}"></circle>`,
+    ),
+  ].join("");
 
   const axisSvg = axis
     .map((tick) => {
