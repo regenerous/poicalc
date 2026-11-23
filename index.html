@@ -63,12 +63,12 @@
               <input id="sight" inputmode="decimal" autocomplete="off" aria-label="Optic height over bore">
               <span id="sight-unit"></span>
             </span>
-            <button type="button" class="spec-name tip-title" data-tip="How high the sight sits above the center of the bore. The bullet has to climb that height to meet the line of sight at the zero." aria-expanded="false">Optic height</button>
+            <button type="button" class="spec-name tip-title" data-tip="How high the sight sits above the center of the bore. The bullet has to climb that height to meet the line of sight at the zero. Typical heights, not exact: AR absolute cowitness about 1.5 in, lower 1/3 about 1.9 in, a pistol red dot about 0.8 in, an AK side-rail optic about 2.5 in." aria-expanded="false">Optic height</button>
           </label>
         </div>
       </section>
 
-      <section class="panel" id="distance-panel" aria-label="Zero, close, and far">
+      <section class="panel" id="distance-panel" aria-label="Zero, close target distance, and far target distance">
         <div class="play">
           <div class="play-control" data-mark="zero">
             <div class="play-line">
@@ -86,31 +86,31 @@
           </div>
           <div class="play-control" data-mark="close">
             <div class="play-line">
-              <h2><button type="button" class="tip-title" data-tip="The nearer shot you want to see. It stays shorter than Far. The coral mark is this distance." aria-expanded="false">Close</button></h2>
+              <h2><button type="button" class="tip-title" data-tip="The nearer shot you want to see. It stays shorter than Far target distance. The coral mark is this distance." aria-expanded="false">Close target distance</button></h2>
               <div class="stepper">
-                <button type="button" id="close-dec" aria-label="Shorter close distance">−</button>
+                <button type="button" id="close-dec" aria-label="Shorter close target distance">−</button>
                 <label class="dist-readout">
-                  <input id="close" inputmode="decimal" autocomplete="off" aria-label="Close distance">
+                  <input id="close" inputmode="decimal" autocomplete="off" aria-label="Close target distance">
                   <span id="close-unit"></span>
                 </label>
-                <button type="button" id="close-inc" aria-label="Longer close distance">+</button>
+                <button type="button" id="close-inc" aria-label="Longer close target distance">+</button>
               </div>
             </div>
-            <input id="close-slider" class="slider" type="range" aria-label="Close distance slider">
+            <input id="close-slider" class="slider" type="range" aria-label="Close target distance slider">
           </div>
           <div class="play-control" data-mark="far">
             <div class="play-line">
-              <h2><button type="button" class="tip-title" data-tip="The farther shot you want to see. It stays longer than Close. The blue mark is this distance." aria-expanded="false">Far</button></h2>
+              <h2><button type="button" class="tip-title" data-tip="The farther shot you want to see. It stays longer than Close target distance. The blue mark is this distance." aria-expanded="false">Far target distance</button></h2>
               <div class="stepper">
-                <button type="button" id="far-dec" aria-label="Shorter far distance">−</button>
+                <button type="button" id="far-dec" aria-label="Shorter far target distance">−</button>
                 <label class="dist-readout">
-                  <input id="far" inputmode="decimal" autocomplete="off" aria-label="Far distance">
+                  <input id="far" inputmode="decimal" autocomplete="off" aria-label="Far target distance">
                   <span id="far-unit"></span>
                 </label>
-                <button type="button" id="far-inc" aria-label="Longer far distance">+</button>
+                <button type="button" id="far-inc" aria-label="Longer far target distance">+</button>
               </div>
             </div>
-            <input id="far-slider" class="slider" type="range" aria-label="Far distance slider">
+            <input id="far-slider" class="slider" type="range" aria-label="Far target distance slider">
           </div>
         </div>
       </section>

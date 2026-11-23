@@ -22,8 +22,8 @@ const DEFAULTS = {
   speedOverrideFps: null,
   sightIn: 1.93,
   zeroYd: 50,
-  closeYd: 100,
-  farYd: 300,
+  closeYd: 5,
+  farYd: 100,
 };
 
 let state = loadState();
@@ -91,6 +91,10 @@ function sanitize(data) {
   let close = clampNum(data.closeYd, 5, 1200, null);
   if (far == null) far = clampNum(data.distanceYd, 5, 1200, DEFAULTS.farYd);
   if (close == null) close = DEFAULTS.closeYd;
+  if (close === 100 && far === 300) {
+    close = DEFAULTS.closeYd;
+    far = DEFAULTS.farYd;
+  }
   if (close > far) [close, far] = [far, close];
   if (far - close < 1) {
     if (close + 1 <= 1200) far = close + 1;
@@ -380,7 +384,7 @@ function drawTarget(closeIn, farIn) {
     .join("");
   svg.setAttribute(
     "aria-label",
-    `Target. Close at ${closeText} is ${formatDrop(closeIn)} ${aimWord(closeIn)}. Far at ${farText} is ${formatDrop(farIn)} ${aimWord(farIn)}. The outer ring is ${ring.label} from center.`,
+    `Target. Close target distance at ${closeText} is ${formatDrop(closeIn)} ${aimWord(closeIn)}. Far target distance at ${farText} is ${formatDrop(farIn)} ${aimWord(farIn)}. The outer ring is ${ring.label} from center.`,
   );
   svg.innerHTML = `
     ${rings}
@@ -391,8 +395,8 @@ function drawTarget(closeIn, farIn) {
     <circle class="dot-far" data-mark="target-far" data-distance="far" cx="${farX}" cy="${farY.toFixed(1)}" r="6"></circle>
     <circle class="dot-halo" cx="${closeX}" cy="${closeY.toFixed(1)}" r="8"></circle>
     <circle class="dot-close" data-mark="target-close" data-distance="close" cx="${closeX}" cy="${closeY.toFixed(1)}" r="6"></circle>
-    ${label(farText, splitSides ? farX - 12 : farX + 12, farY, "far", splitSides ? "left" : "right")}
-    ${label(closeText, closeX + 12, closeY, "close", "right")}
+    ${label(formatSignedDrop(farIn), splitSides ? farX - 12 : farX + 12, farY, "far", splitSides ? "left" : "right")}
+    ${label(formatSignedDrop(closeIn), closeX + 12, closeY, "close", "right")}
   `;
   $("target-caption").textContent = `Center is the aim point. Outer ring is ${ring.label}.`;
 }
@@ -462,7 +466,7 @@ function drawPath(poi) {
   if (poi.fallYd != null) bits.push(`falls back through it at ${formatDistanceNumber(poi.fallYd)} ${unit}`);
   svg.setAttribute(
     "aria-label",
-    `Side view. The bullet ${bits.join(" and ") || "stays off the line of sight"}. Close at ${formatDistanceNumber(state.closeYd)} ${unit} is ${formatSignedDrop(closeIn)}. Far at ${formatDistanceNumber(state.farYd)} ${unit} is ${formatSignedDrop(farIn)}.`,
+    `Side view. The bullet ${bits.join(" and ") || "stays off the line of sight"}. Close target distance at ${formatDistanceNumber(state.closeYd)} ${unit} is ${formatSignedDrop(closeIn)}. Far target distance at ${formatDistanceNumber(state.farYd)} ${unit} is ${formatSignedDrop(farIn)}.`,
   );
   const impactsNear = Math.abs(closeX - farX) < 72;
   const impactLabel = (kind, x, y, yd) => {
@@ -1027,7 +1031,7 @@ function stepShown(currentYd, direction, minYd, maxYd) {
   const shown = displayDistance(currentYd);
   const min = displayDistance(minYd);
   const max = Math.max(min, displayDistance(maxYd));
-  const next = Math.min(max, Math.max(min, shown + direction * 25));
+  const next = Math.min(max, Math.max(min, shown + direction * 5));
   return yardsFromDisplay(next);
 }
 
