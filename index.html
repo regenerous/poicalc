@@ -1,15 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#f6f5f2">
+    <meta name="theme-color" content="#0e0d0c">
+    <script>
+      (function () {
+        var theme = "dark";
+        try {
+          var data = JSON.parse(localStorage.getItem("poicalc.setup") || "");
+          if (data && data.theme === "light") theme = "light";
+        } catch (e) {}
+        document.documentElement.setAttribute("data-theme", theme);
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", theme === "light" ? "#e6e2da" : "#0e0d0c");
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="POI">
     <meta name="format-detection" content="telephone=no">
-    <meta name="description" content="Point of impact for one zeroed rifle or pistol. Works from the Home Screen offline.">
+    <meta name="description" content="Point of impact for one zeroed rifle or pistol.">
     <title>POI</title>
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="apple-touch-icon" href="./icons/icon-180.png">
@@ -21,99 +33,186 @@
       <header class="top">
         <div class="readout">
           <h1>POI</h1>
-          <p id="drop-where" class="where"></p>
-          <p id="drop-value" class="drop" aria-live="polite"></p>
+          <p class="pair">
+            <span id="close-where" class="where"></span>
+            <span id="close-drop" class="drop" aria-live="polite"></span>
+          </p>
+          <p class="pair">
+            <span id="far-where" class="where"></span>
+            <span id="far-drop" class="drop far-drop" aria-live="polite"></span>
+          </p>
         </div>
         <div class="top-side">
+          <div class="units" role="radiogroup" aria-label="Appearance">
+            <button type="button" id="theme-dark" role="radio" aria-checked="true">Dark</button>
+            <button type="button" id="theme-light" role="radio" aria-checked="false">Light</button>
+          </div>
           <div class="units" role="radiogroup" aria-label="Units">
             <button type="button" id="unit-imperial" role="radio" aria-checked="true">Imperial</button>
             <button type="button" id="unit-metric" role="radio" aria-checked="false">Metric</button>
           </div>
           <p id="unit-hint" class="hint"></p>
-          <p class="remember">Remembered on this phone</p>
         </div>
       </header>
 
-      <section class="stage" aria-label="Point of impact">
+      <section class="panel" id="distance-panel" aria-label="Zero, close, and far">
+        <div class="play">
+          <div class="play-control" data-mark="zero">
+            <div class="play-line">
+              <h2><button type="button" class="tip-title" data-tip="The distance where the bullet meets the line of sight. Closer and farther shots are measured from this zero." aria-expanded="false">Zero</button></h2>
+              <div class="stepper">
+                <button type="button" id="zero-dec" aria-label="Shorter zero">−</button>
+                <label class="dist-readout">
+                  <input id="zero" inputmode="decimal" autocomplete="off" aria-label="Zero distance">
+                  <span id="zero-unit"></span>
+                </label>
+                <button type="button" id="zero-inc" aria-label="Longer zero">+</button>
+              </div>
+            </div>
+            <input id="zero-slider" class="slider" type="range" aria-label="Zero distance slider">
+          </div>
+          <div class="play-control" data-mark="close">
+            <div class="play-line">
+              <h2><button type="button" class="tip-title" data-tip="The nearer shot you want to see. It stays shorter than Far. The coral mark is this distance." aria-expanded="false">Close</button></h2>
+              <div class="stepper">
+                <button type="button" id="close-dec" aria-label="Shorter close distance">−</button>
+                <label class="dist-readout">
+                  <input id="close" inputmode="decimal" autocomplete="off" aria-label="Close distance">
+                  <span id="close-unit"></span>
+                </label>
+                <button type="button" id="close-inc" aria-label="Longer close distance">+</button>
+              </div>
+            </div>
+            <input id="close-slider" class="slider" type="range" aria-label="Close distance slider">
+          </div>
+          <div class="play-control" data-mark="far">
+            <div class="play-line">
+              <h2><button type="button" class="tip-title" data-tip="The farther shot you want to see. It stays longer than Close. The blue mark is this distance." aria-expanded="false">Far</button></h2>
+              <div class="stepper">
+                <button type="button" id="far-dec" aria-label="Shorter far distance">−</button>
+                <label class="dist-readout">
+                  <input id="far" inputmode="decimal" autocomplete="off" aria-label="Far distance">
+                  <span id="far-unit"></span>
+                </label>
+                <button type="button" id="far-inc" aria-label="Longer far distance">+</button>
+              </div>
+            </div>
+            <input id="far-slider" class="slider" type="range" aria-label="Far distance slider">
+          </div>
+        </div>
+      </section>
+
+      <section class="stage" id="stage" aria-label="Point of impact">
         <div class="target-wrap">
           <svg id="target" viewBox="0 0 208 208" role="img"></svg>
         </div>
         <p id="target-caption" class="caption"></p>
         <div class="chart-head">
           <span id="chart-units"></span>
-          <span id="chart-readout"></span>
+          <span class="chart-impacts">
+            <span id="chart-close"></span>
+            <span id="chart-far"></span>
+          </span>
         </div>
         <div class="chart-frame">
           <svg id="path" viewBox="0 0 356 156" role="img"></svg>
         </div>
       </section>
 
-      <section class="sheet">
-        <h2>Ammunition</h2>
-        <div id="preset-selected"></div>
-        <div id="preset-grid" class="preset-grid"></div>
-
-        <div class="distance-block">
-          <div class="distance-head">
-            <span>Distance</span>
-            <span id="zero-note"></span>
-          </div>
-          <div class="stepper">
-            <button type="button" id="dist-dec" aria-label="Shorter distance">−</button>
-            <label class="dist-readout">
-              <input id="distance" inputmode="decimal" autocomplete="off" aria-label="Selected distance">
-              <span id="distance-unit"></span>
+      <section class="panel" id="ammo-section" aria-labelledby="ammo-heading">
+        <div class="panel-head">
+          <h2 id="ammo-heading">Ammunition</h2>
+          <button type="button" id="add-ammo">Add ammo</button>
+        </div>
+        <div class="box-search">
+          <div class="fields">
+            <label class="field">
+              <button type="button" class="tip-title" data-tip="The maker printed on the box. Search matches it with the model number." aria-expanded="false">Brand on the box</button>
+              <input id="box-brand" autocomplete="off" autocapitalize="off" spellcheck="false">
             </label>
-            <button type="button" id="dist-inc" aria-label="Longer distance">+</button>
+            <label class="field">
+              <button type="button" class="tip-title" data-tip="The model or part number printed on the box. A match fills speed, and G1 BC when the maker published one." aria-expanded="false">Model number</button>
+              <input id="box-model" autocomplete="off" autocapitalize="off" spellcheck="false">
+            </label>
+          </div>
+          <button type="button" id="box-search">Search the box</button>
+          <p id="box-result" class="rule" hidden></p>
+        </div>
+        <div id="ammo-groups"></div>
+
+        <div id="edit-fields" class="load-fields">
+          <div class="fields">
+            <label class="field">
+              <button type="button" class="tip-title" data-tip="The cartridge name, such as .223 Rem or 9mm. Loads with the same name sit in one group." aria-expanded="false">Caliber</button>
+              <input id="caliber" autocomplete="off" autocapitalize="off" spellcheck="false">
+            </label>
+            <label class="field">
+              <button type="button" class="tip-title" id="weight-label" data-tip="Bullet weight from the box. The path uses muzzle speed and G1 BC. Weight keeps each load recognizable." aria-expanded="false">Weight</button>
+              <input id="weight" inputmode="decimal" autocomplete="off">
+            </label>
+            <label class="field">
+              <button type="button" class="tip-title" id="speed-label" data-tip="How fast the bullet leaves the muzzle. A typed speed replaces the catalog speed. Otherwise it shifts 25 feet per second for each inch of barrel." aria-expanded="false">Muzzle speed</button>
+              <input id="speed" inputmode="decimal" autocomplete="off">
+            </label>
+            <label class="field">
+              <button type="button" class="tip-title" data-tip="How well the bullet holds its speed, on the G1 model. A higher number drops less. If the maker published no G1, type one to draw the path." aria-expanded="false">G1 BC</button>
+              <input id="bc" inputmode="decimal" autocomplete="off">
+            </label>
           </div>
         </div>
 
+        <div id="add-panel" class="load-fields" hidden>
+          <p class="add-title">New ammunition</p>
+          <div class="fields">
+            <label class="field">
+              <button type="button" class="tip-title" data-tip="The cartridge name, such as .223 Rem or 9mm. Loads with the same name sit in one group." aria-expanded="false">Caliber</button>
+              <input id="add-caliber" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="New caliber">
+            </label>
+            <label class="field">
+              <button type="button" class="tip-title" id="add-weight-label" data-tip="Bullet weight from the box. The path uses muzzle speed and G1 BC. Weight keeps each load recognizable." aria-expanded="false">Weight</button>
+              <input id="add-weight" inputmode="decimal" autocomplete="off" aria-label="New weight">
+            </label>
+            <label class="field">
+              <button type="button" class="tip-title" id="add-speed-label" data-tip="How fast the bullet leaves the muzzle. A typed speed replaces the catalog speed. Otherwise it shifts 25 feet per second for each inch of barrel." aria-expanded="false">Muzzle speed</button>
+              <input id="add-speed" inputmode="decimal" autocomplete="off" aria-label="New muzzle speed">
+            </label>
+            <label class="field">
+              <button type="button" class="tip-title" data-tip="How well the bullet holds its speed, on the G1 model. A higher number drops less. If the maker published no G1, type one to draw the path." aria-expanded="false">G1 BC</button>
+              <input id="add-bc" inputmode="decimal" autocomplete="off" aria-label="New G1 ballistic coefficient">
+            </label>
+          </div>
+          <p class="add-hint">Caliber, weight, speed, and a G1 BC.</p>
+          <div class="add-actions">
+            <button type="button" id="add-cancel">Cancel</button>
+            <button type="button" id="add-save" disabled>Save ammo</button>
+          </div>
+        </div>
+
+        <p id="rule" class="rule"></p>
+        <button type="button" id="use-catalog" hidden>Use catalog speed</button>
+      </section>
+
+      <section class="panel" id="setup-section" aria-labelledby="setup-heading">
+        <h2 id="setup-heading">Barrel and optic</h2>
         <div class="specs">
           <label class="spec">
             <span class="spec-value">
               <input id="barrel" inputmode="decimal" autocomplete="off" aria-label="Barrel length">
               <span id="barrel-unit"></span>
             </span>
-            <span class="spec-name">Barrel</span>
+            <button type="button" class="spec-name tip-title" data-tip="Barrel length. Catalog speed shifts 25 feet per second for each inch longer or shorter than that load's reference barrel." aria-expanded="false">Barrel</button>
           </label>
           <label class="spec">
             <span class="spec-value">
               <input id="sight" inputmode="decimal" autocomplete="off" aria-label="Optic height over bore">
               <span id="sight-unit"></span>
             </span>
-            <span class="spec-name">Optic height</span>
-          </label>
-          <label class="spec">
-            <span class="spec-value">
-              <input id="zero" inputmode="decimal" autocomplete="off" aria-label="Zero distance">
-              <span id="zero-unit"></span>
-            </span>
-            <span class="spec-name">Zero</span>
+            <button type="button" class="spec-name tip-title" data-tip="How high the sight sits above the center of the bore. The bullet has to climb that height to meet the line of sight at the zero." aria-expanded="false">Optic height</button>
           </label>
         </div>
-        <p id="rule" class="rule"></p>
-        <button type="button" id="use-catalog" hidden>Use catalog speed</button>
-        <div class="fields">
-          <label class="field">
-            <span>Caliber</span>
-            <input id="caliber" autocomplete="off" autocapitalize="off" spellcheck="false">
-          </label>
-          <label class="field">
-            <span id="weight-label">Weight</span>
-            <input id="weight" inputmode="decimal" autocomplete="off">
-          </label>
-          <label class="field">
-            <span id="speed-label">Muzzle speed</span>
-            <input id="speed" inputmode="decimal" autocomplete="off">
-          </label>
-          <label class="field">
-            <span>G1 BC</span>
-            <input id="bc" inputmode="decimal" autocomplete="off">
-          </label>
-        </div>
-
-        <p class="footer">Home Screen app · works offline · <span id="version"></span></p>
       </section>
+
+      <p class="footer"><span id="version"></span></p>
     </div>
     <noscript>POI needs JavaScript to calculate the path.</noscript>
     <script type="module" src="./js/app.js"></script>
