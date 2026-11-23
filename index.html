@@ -142,11 +142,11 @@
             <span>Brand</span>
             <select id="brand-pick"></select>
           </label>
-          <label class="field">
+          <label class="field" id="weight-field">
             <span>Bullet weight</span>
             <select id="weight-pick"></select>
           </label>
-          <div class="field">
+          <div class="field" id="box-field">
             <span>Box</span>
             <div class="load-select">
               <button type="button" id="load-pick" aria-haspopup="listbox" aria-expanded="false" aria-controls="load-menu"></button>
@@ -157,6 +157,14 @@
 
         <div id="edit-fields" class="load-fields">
           <div class="fields">
+            <label class="field" id="model-field" hidden>
+              <button type="button" class="tip-title" data-tip="The model number on the box. Leave it blank if the box has none." aria-expanded="false">Model</button>
+              <input id="model" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Model">
+            </label>
+            <label class="field" id="upc-field" hidden>
+              <button type="button" class="tip-title" data-tip="The UPC printed on the box, if it has one. Leave it blank when there is no UPC." aria-expanded="false">UPC</button>
+              <input id="upc" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="UPC">
+            </label>
             <label class="field">
               <button type="button" class="tip-title" data-tip="The cartridge name, such as .223 Rem or 9mm. Loads with the same name sit in one group." aria-expanded="false">Caliber</button>
               <input id="caliber" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -177,8 +185,16 @@
         </div>
 
         <div id="add-panel" class="load-fields" hidden>
-          <p class="add-title">New ammunition</p>
+          <p class="add-title">Custom load</p>
           <div class="fields">
+            <label class="field">
+              <button type="button" class="tip-title" data-tip="The model number on the box. Leave it blank if the box has none." aria-expanded="false">Model</button>
+              <input id="add-model" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Custom model">
+            </label>
+            <label class="field">
+              <button type="button" class="tip-title" data-tip="The UPC printed on the box, if it has one. Leave it blank when there is no UPC." aria-expanded="false">UPC</button>
+              <input id="add-upc" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="Custom UPC">
+            </label>
             <label class="field">
               <button type="button" class="tip-title" data-tip="The cartridge name, such as .223 Rem or 9mm. Loads with the same name sit in one group." aria-expanded="false">Caliber</button>
               <input id="add-caliber" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="New caliber">
@@ -196,7 +212,7 @@
               <input id="add-bc" inputmode="decimal" autocomplete="off" aria-label="New G1 ballistic coefficient">
             </label>
           </div>
-          <p class="add-hint">Type a caliber, weight, and speed. Leave G1 BC empty if the box does not list one.</p>
+          <p class="add-hint">Type a caliber, grain weight, and muzzle speed. Model, UPC, and G1 BC stay empty unless you type them.</p>
           <div class="add-actions">
             <button type="button" id="add-cancel">Cancel</button>
             <button type="button" id="add-save" disabled>Save ammo</button>
