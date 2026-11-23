@@ -652,10 +652,13 @@ html.standalone .app {
 
 .paper-hit {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
-  white-space: nowrap;
 }
 
 .paper-hit-label {
@@ -668,9 +671,11 @@ html.standalone .app {
 }
 
 #paper-offset {
+  max-width: 100%;
   font-size: 14px;
   line-height: 18px;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .slider {
