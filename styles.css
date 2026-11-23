@@ -372,25 +372,47 @@ html.standalone .app {
 .chart-head {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 16px 4px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 16px 2px;
   font-size: 11px;
   line-height: 14px;
   color: var(--secondary);
 }
 
+.chart-extents,
 .chart-impacts {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
   gap: 2px;
-  text-align: right;
+  min-width: 0;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
+.chart-extents {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.chart-impacts {
+  align-items: flex-end;
+  flex: 0 0 auto;
+  text-align: right;
+}
+
 #chart-close { color: var(--accent); }
 #chart-far { color: var(--far); }
+
+/* A short phone has to show the four distances, the bullseye, and the
+   curve at once. Shrink the target only there, and only enough to fit. */
+@media (max-height: 720px) {
+  .app { gap: 8px; }
+  .stage { padding: 2px 0; }
+  .caption { margin-top: 2px; }
+  .chart-head { padding: 2px 12px 0; }
+  #target { width: min(136px, 40vw); }
+}
 
 .chart-frame { padding: 0 12px; }
 
@@ -626,6 +648,20 @@ html.standalone .app {
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--stroke);
+}
+
+#distance-panel {
+  padding: 6px 10px 4px;
+}
+
+#distance-panel .play-control + .play-control {
+  margin-top: 2px;
+  padding-top: 2px;
+}
+
+#distance-panel .slider {
+  height: 22px;
+  margin: 0;
 }
 
 .play-line {

@@ -1143,7 +1143,6 @@ function render() {
   $("unit-imperial").setAttribute("aria-checked", metric() ? "false" : "true");
   $("unit-metric").setAttribute("aria-checked", metric() ? "true" : "false");
   $("unit-hint").textContent = metric() ? "mm, m, m/s, g" : "inches, yd, ft/s, gr";
-  $("chart-units").textContent = metric() ? "Millimeters vs meters" : "Inches vs yards";
   $("chart-close").textContent = poi
     ? `${formatSignedDrop(closeIn)} at ${formatDistanceNumber(state.closeYd)} ${unit}`
     : "Type a G1 BC";
@@ -1153,11 +1152,15 @@ function render() {
   const ends = poi ? extremaInRange(poi) : null;
   $("chart-min").hidden = !ends;
   $("chart-max").hidden = !ends;
+  $("chart-spread").hidden = !ends;
   $("chart-min").textContent = ends
     ? `Min ${formatSignedDrop(ends.min.inches)} at ${formatDistanceNumber(ends.min.yd)} ${unit}`
     : "";
   $("chart-max").textContent = ends
     ? `Max ${formatSignedDrop(ends.max.inches)} at ${formatDistanceNumber(ends.max.yd)} ${unit}`
+    : "";
+  $("chart-spread").textContent = ends
+    ? `Max − Min ${formatDrop(ends.max.inches - ends.min.inches)}`
     : "";
   $("close-unit").textContent = unit;
   $("far-unit").textContent = unit;
