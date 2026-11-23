@@ -565,10 +565,16 @@ function drawPath(poi) {
       const ny = Math.max(box.top, Math.min(dot.y, box.bottom));
       return (nx - dot.x) ** 2 + (ny - dot.y) ** 2 <= (dot.r + 2) ** 2;
     });
-  const hitsCurve = (box) => {
-    const pad = 2;
+  const gapTo = (box, x, y) => {
+    const px = Math.max(box.left, Math.min(x, box.right));
+    const py = Math.max(box.top, Math.min(y, box.bottom));
+    return Math.hypot(x - px, y - py);
+  };
+  const hitsCurve = (box, label) => {
+    const pad = 1;
     for (let i = 0; i < curve.length; i += 1) {
       const point = curve[i];
+      if (Math.hypot(point.x - label.x, point.y - label.y) <= label.r + 2) continue;
       if (
         point.x >= box.left - pad &&
         point.x <= box.right + pad &&
@@ -583,35 +589,46 @@ function drawPath(poi) {
   const hitsLine = (box) => box.top < losY + 4 && box.bottom > losY - 4;
   const placeOffsetLabel = (label, taken) => {
     const wide = textWidth(label.text);
-    const dirs = label.inches > 0.05 ? [-1, 1] : [1, -1];
-    const shifts = [0, 12, -12, 24, -24, 40, -40, 56, -56, 74, -74, 92, -92];
-    const clear = (x, y, anchor) => {
+    const low = label.inches < -0.05;
+    const beside = label.r + 4;
+    const yMid = label.y + 4;
+    const candidates = [];
+    const add = (x, y, anchor) => candidates.push([x, y, anchor]);
+    if (low) {
+      add(label.x + beside, yMid, "start");
+      add(label.x - beside, yMid, "end");
+      for (const row of [8, 20, 32]) add(label.x + 2, label.y + beside + row, "start");
+    } else {
+      add(label.x, label.y - beside - 8, "middle");
+      add(label.x + beside, label.y - beside - 6, "start");
+      add(label.x - beside, label.y - beside - 6, "end");
+      add(label.x + beside, yMid, "start");
+      add(label.x - beside, yMid, "end");
+      add(label.x + 2, label.y + beside + 8, "start");
+    }
+    const accept = (x, y, anchor, limit) => {
       const box = boxFor(x, y, wide, anchor);
       if (box.top < 3 || box.bottom > height - 16 || box.left < 2 || box.right > width - 2) return null;
-      if (hitsLine(box) || hitsDot(box) || hitsCurve(box) || taken.some((item) => overlaps(box, item))) return null;
+      const gap = gapTo(box, label.x, label.y);
+      if (gap > limit) return null;
+      const closerToOther = dots.some(
+        (dot) => Math.hypot(dot.x - label.x, dot.y - label.y) > 2 && gapTo(box, dot.x, dot.y) + 2 < gap,
+      );
+      if (closerToOther || hitsLine(box) || hitsDot(box) || hitsCurve(box, label)) return null;
+      if (taken.some((item) => overlaps(box, item))) return null;
       return { x, y, anchor, box };
     };
-    for (const lift of [0, 4, 8, 14, 22]) {
-      for (const dir of dirs) {
-        for (const shift of shifts) {
-          const anchor = shift > 6 ? "start" : shift < -6 ? "end" : "middle";
-          const y = dir < 0 ? label.y - 11 - lift : label.y + 17 + lift;
-          const spot = clear(label.x + shift, y, anchor);
-          if (spot) return spot;
-        }
-      }
+    for (const [x, y, anchor] of candidates) {
+      const spot = accept(x, y, anchor, label.r + 16);
+      if (spot) return spot;
     }
-    const dir = dirs[0];
-    for (let shift = 8; shift < width; shift += 12) {
-      const y = dir < 0 ? label.y - 14 : label.y + 20;
-      const right = clear(label.x + shift, y, "start");
-      if (right) return right;
-      const left = clear(label.x - shift, y, "end");
-      if (left) return left;
+    for (const row of [8, 20, 32]) {
+      const y = low ? label.y + beside + row : label.y - beside - row;
+      const spot = accept(label.x + 2, y, "start", label.r + 28);
+      if (spot) return spot;
     }
-    const y = dir < 0 ? Math.max(12, label.y - 22) : Math.min(height - 18, label.y + 24);
-    const x = Math.min(width - wide - 4, Math.max(8, label.x + 8));
-    return { x, y, anchor: "start", box: boxFor(x, y, wide, "start") };
+    const y = low ? label.y + beside + 8 : label.y - beside - 8;
+    return { x: label.x + beside, y, anchor: "start", box: boxFor(label.x + beside, y, wide, "start") };
   };
   const offsetLabels = marked
     .filter((mark) => !onAimInches(mark.inches))
@@ -625,7 +642,7 @@ function drawPath(poi) {
       inches: mark.inches,
       attr: mark.kind === "min" || mark.kind === "max" ? "data-extreme" : "data-distance",
     }))
-    .sort((a, b) => Math.abs(b.inches) - Math.abs(a.inches));
+    .sort((a, b) => b.x - a.x);
   const taken = [];
   const placedLabels = offsetLabels.map((label) => {
     const spot = placeOffsetLabel(label, taken);
@@ -643,7 +660,7 @@ function drawPath(poi) {
       const dx = label.x - px;
       const dy = label.y - py;
       const dist = Math.hypot(dx, dy);
-      if (dist < 1) return "";
+      if (dist < 1 || dist > 18) return "";
       const stop = label.r + 1.5;
       const x2 = label.x - (dx / dist) * Math.min(stop, dist - 0.5);
       const y2 = label.y - (dy / dist) * Math.min(stop, dist - 0.5);
