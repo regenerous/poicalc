@@ -69,10 +69,30 @@ input {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: calc(4px + env(safe-area-inset-top)) 12px 0;
+  padding: calc(4px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
   padding-left: calc(12px + env(safe-area-inset-left));
   padding-right: calc(12px + env(safe-area-inset-right));
   background: var(--bg);
+}
+
+.mast {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0 0;
+}
+
+.mast h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+#version {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--tertiary);
 }
 
 .top {
@@ -766,15 +786,6 @@ input {
   font-weight: 400;
 }
 
-.footer {
-  margin: 0;
-  padding: 2px 4px calc(12px + env(safe-area-inset-bottom));
-  text-align: center;
-  font-size: 11px;
-  line-height: 14px;
-  color: var(--tertiary);
-}
-
 .chart-bg { fill: var(--bg); stroke: var(--stroke-strong); }
 .los { stroke: var(--secondary); }
 .path-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
@@ -787,7 +798,9 @@ input {
 .far-label { fill: var(--far); }
 .cross-label { fill: var(--secondary); font-size: 10px; font-weight: 600; }
 .axis-label { fill: var(--tertiary); font-size: 10px; }
-.axis-hot { fill: var(--accent); font-size: 10px; font-weight: 600; }
+.axis-close { fill: var(--accent); font-size: 10px; font-weight: 600; }
+.axis-far { fill: var(--far); font-size: 10px; font-weight: 600; }
+.aim-label { fill: var(--secondary); font-size: 10px; font-weight: 600; }
 .ring-a { fill: var(--card); stroke: var(--stroke-strong); }
 .ring-b { fill: var(--fill); stroke: var(--stroke-strong); }
 .bull { fill: var(--text); }

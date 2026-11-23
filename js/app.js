@@ -1,5 +1,5 @@
 import { solvePoi } from "./ballistics.js";
-import { FPS_PER_INCH, PRESETS, catalogLines, muzzleFps, presetById } from "./presets.js";
+import { FPS_PER_INCH, PRESETS, muzzleFps, presetById } from "./presets.js";
 import { VERSION } from "./version.js";
 
 const KEY = "poicalc.setup";
@@ -29,18 +29,7 @@ const DEFAULTS = {
 };
 
 let state = loadState();
-let adding = false;
-let picker = { hold: false, menuOpen: false, brand: "", weight: "" };
-
-const LINE_COLOR = {
-  Winchester: "#8d6a32",
-  Federal: "#1e4d32",
-  "American Eagle": "#1d3e66",
-  Remington: "#6d2e28",
-  CCI: "#243646",
-  Tula: "#3e4a28",
-  Barnaul: "#4a3824",
-};
+let formDirty = false;
 
 function loadState() {
   try {
@@ -228,7 +217,7 @@ function formatDrop(inches) {
     const mm = abs * 25.4;
     return mm >= 10 ? `${Math.round(mm)} mm` : `${mm.toFixed(1)} mm`;
   }
-  return `${abs.toFixed(1)} in`;
+  return `${abs.toFixed(1)} inches`;
 }
 
 function formatSignedDrop(inches) {
@@ -296,7 +285,7 @@ function ringSize(absInches) {
   }
   const need = Math.max(absInches * 1.2, 2);
   const chosen = RING_STEPS.find((step) => step >= need) ?? RING_STEPS[RING_STEPS.length - 1];
-  return { inches: chosen, label: `${chosen} in` };
+  return { inches: chosen, label: `${chosen} inches` };
 }
 
 function smoothPath(points) {
@@ -469,21 +458,25 @@ function drawPath(poi) {
     poi.climbYd == null ? null : { kind: "climb", yd: poi.climbYd, verb: "climb" },
     poi.fallYd == null ? null : { kind: "fall", yd: poi.fallYd, verb: "fall" },
   ].filter(Boolean);
-  const placed = marks.map((mark) => ({
-    ...mark,
-    x: xOf(mark.yd),
-    y: yOf(0),
-    text: formatSignedDrop(0),
-  }));
-  if (marksClose && placed.length === 2) {
-    placed[0].labelY = 14;
-    placed[1].labelY = 28;
-  } else {
-    for (const mark of placed) mark.labelY = Math.max(16, mark.y - 14);
-  }
+  const placed = marks.map((mark) => {
+    const nearImpact =
+      Math.hypot(xOf(mark.yd) - closeX, yOf(0) - closeY) < 10 ||
+      Math.hypot(xOf(mark.yd) - farX, yOf(0) - farY) < 10;
+    return {
+      ...mark,
+      x: xOf(mark.yd),
+      y: yOf(0),
+      r: nearImpact ? 7 : 3.5,
+      text: formatSignedDrop(0),
+    };
+  });
 
-  const axis = [{ yd: 0, hot: false }, { yd: state.closeYd, hot: true }, { yd: state.farYd, hot: true }];
-  if (reach > state.farYd + 1) axis.push({ yd: reach, hot: false });
+  const axis = [
+    { yd: 0, role: "" },
+    { yd: state.closeYd, role: "close" },
+    { yd: state.farYd, role: "far" },
+  ];
+  if (reach > state.farYd + 1) axis.push({ yd: reach, role: "" });
 
   const unit = distanceUnit();
   const bits = [];
@@ -493,35 +486,114 @@ function drawPath(poi) {
     "aria-label",
     `Side view. The bullet ${bits.join(" and ") || "stays off the line of sight"}. Close target distance at ${formatDistanceNumber(state.closeYd)} ${unit} is ${formatSignedDrop(closeIn)}. Far target distance at ${formatDistanceNumber(state.farYd)} ${unit} is ${formatSignedDrop(farIn)}.`,
   );
-  const impactsNear = Math.abs(closeX - farX) < 72;
-  const impactLabel = (kind, x, y, inches) => {
-    const anchor = x < 70 ? "start" : x > width - 70 ? "end" : "middle";
-    const textX = anchor === "start" ? x - 8 : anchor === "end" ? x + 8 : x;
-    const lift = impactsNear && kind === "far" ? 28 : 14;
-    const textY = Math.max(14, y - lift);
-    const cls = kind === "far" ? "cross-label far-label" : "cross-label";
-    return `<text class="${cls}" data-distance="${kind}" x="${textX.toFixed(1)}" y="${textY.toFixed(1)}" text-anchor="${anchor}">${formatSignedDrop(inches)}</text>`;
+
+  const dots = [
+    { x: closeX, y: closeY, r: 6 },
+    { x: farX, y: farY, r: 6 },
+    { x: xOf(0), y: yOf(-state.sightIn), r: 4 },
+    ...placed.map((mark) => ({ x: mark.x, y: mark.y, r: mark.r + 1 })),
+  ];
+  const textWidth = (text) => text.length * 5.7 + 2;
+  const boxFor = (x, y, wide, anchor) => {
+    const left = anchor === "start" ? x : anchor === "end" ? x - wide : x - wide / 2;
+    return { left, right: left + wide, top: y - 9, bottom: y + 2 };
   };
+  const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  const hitsDot = (box) =>
+    dots.some((dot) => {
+      const nx = Math.max(box.left, Math.min(dot.x, box.right));
+      const ny = Math.max(box.top, Math.min(dot.y, box.bottom));
+      return (nx - dot.x) ** 2 + (ny - dot.y) ** 2 <= (dot.r + 2) ** 2;
+    });
+  const hitsCurve = (box) => {
+    const pad = 3;
+    for (let i = 0; i < curve.length; i += 1) {
+      const point = curve[i];
+      if (
+        point.x >= box.left - pad &&
+        point.x <= box.right + pad &&
+        point.y >= box.top - pad &&
+        point.y <= box.bottom + pad
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+  const hitsLine = (box) => box.top < losY + 4 && box.bottom > losY - 4;
+  const placeOffsetLabel = (label, taken) => {
+    const wide = textWidth(label.text);
+    const dirs = label.inches > 0.05 ? [-1, 1] : [1, -1];
+    const shifts = [0, 26, -26, 46, -46, 66, -66];
+    for (const dir of dirs) {
+      for (const shift of shifts) {
+        const anchor = shift > 14 ? "start" : shift < -14 ? "end" : "middle";
+        const x = label.x + shift;
+        const y = dir < 0 ? label.y - 16 : label.y + 18;
+        const box = boxFor(x, y, wide, anchor);
+        if (box.top < 3 || box.bottom > height - 16 || box.left < 2 || box.right > width - 2) continue;
+        if (hitsLine(box) || hitsDot(box) || hitsCurve(box) || taken.some((item) => overlaps(box, item))) continue;
+        return { x, y, anchor, box };
+      }
+    }
+    const dir = dirs[0];
+    const y = dir < 0 ? Math.max(12, label.y - 30) : Math.min(height - 18, label.y + 30);
+    const x = Math.min(width - wide - 4, Math.max(8, label.x + 24));
+    return { x, y, anchor: "start", box: boxFor(x, y, wide, "start") };
+  };
+  const offsetLabels = [
+    { kind: "close", cls: "cross-label", text: formatSignedDrop(closeIn), x: closeX, y: closeY, inches: closeIn, attr: "data-distance" },
+    { kind: "far", cls: "cross-label far-label", text: formatSignedDrop(farIn), x: farX, y: farY, inches: farIn, attr: "data-distance" },
+    ...placed.map((mark) => ({
+      kind: mark.kind,
+      cls: "cross-label",
+      text: mark.text,
+      x: mark.x,
+      y: mark.y,
+      inches: 0,
+      attr: "data-crossing",
+    })),
+  ].sort((a, b) => Math.abs(b.inches) - Math.abs(a.inches));
+  const taken = [];
+  const labelSvg = offsetLabels
+    .map((label) => {
+      const spot = placeOffsetLabel(label, taken);
+      taken.push(spot.box);
+      return `<text class="${label.cls}" ${label.attr}="${label.kind}" x="${spot.x.toFixed(1)}" y="${spot.y.toFixed(1)}" text-anchor="${spot.anchor}">${label.text}</text>`;
+    })
+    .join("");
+  const aimText = "Aim Point";
+  const aimWide = textWidth(aimText);
+  const aimCandidates = [
+    { x: width - 10, y: losY - 2, anchor: "end" },
+    { x: pad.l + 4, y: losY - 2, anchor: "start" },
+    { x: width - 10, y: losY + 14, anchor: "end" },
+    { x: pad.l + 4, y: losY + 14, anchor: "start" },
+    { x: Math.min(width - 12, farX + 28), y: losY - 2, anchor: "start" },
+    { x: Math.max(12, closeX - 28), y: losY - 2, anchor: "end" },
+  ];
+  let aimSpot = { x: width - 10, y: Math.max(12, losY - 2), anchor: "end" };
+  for (const candidate of aimCandidates) {
+    const box = boxFor(candidate.x, candidate.y, aimWide, candidate.anchor);
+    if (box.top < 3 || box.bottom > height - 16 || box.left < 2 || box.right > width - 2) continue;
+    if (hitsDot(box) || taken.some((item) => overlaps(box, item))) continue;
+    aimSpot = candidate;
+    break;
+  }
+  const aimSvg = `<text class="aim-label" data-aim="line" x="${aimSpot.x.toFixed(1)}" y="${aimSpot.y.toFixed(1)}" text-anchor="${aimSpot.anchor}">${aimText}</text>`;
 
   const markSvg = placed
-    .map((mark) => {
-      const anchor = mark.x < 70 ? "start" : mark.x > width - 70 ? "end" : "middle";
-      const x = anchor === "start" ? mark.x - 8 : anchor === "end" ? mark.x + 8 : mark.x;
-      const nearImpact =
-        Math.hypot(mark.x - closeX, mark.y - closeY) < 10 || Math.hypot(mark.x - farX, mark.y - farY) < 10;
-      const radius = nearImpact ? 7 : 3.5;
-      return `
-        <circle class="mark-open" data-mark="${mark.kind}" data-crossing="${mark.kind}" cx="${mark.x.toFixed(1)}" cy="${mark.y.toFixed(1)}" r="${radius}"></circle>
-        <text class="cross-label" data-crossing="${mark.kind}" x="${x.toFixed(1)}" y="${Math.max(14, mark.labelY).toFixed(1)}" text-anchor="${anchor}">${mark.text}</text>
-      `;
-    })
+    .map(
+      (mark) =>
+        `<circle class="mark-open" data-mark="${mark.kind}" data-crossing="${mark.kind}" cx="${mark.x.toFixed(1)}" cy="${mark.y.toFixed(1)}" r="${mark.r}"></circle>`,
+    )
     .join("");
 
   const axisSvg = axis
     .map((tick) => {
       const x = tick.yd === 0 ? pad.l : xOf(tick.yd);
       const anchor = tick.yd === 0 ? "start" : "middle";
-      const cls = tick.hot ? "axis-hot" : "axis-label";
+      const cls = tick.role === "far" ? "axis-far" : tick.role === "close" ? "axis-close" : "axis-label";
       const label = tick.yd === 0 ? "0" : formatDistanceNumber(tick.yd);
       return `<text class="${cls}" x="${x.toFixed(1)}" y="${height - 7}" text-anchor="${anchor}">${label}</text>`;
     })
@@ -537,8 +609,8 @@ function drawPath(poi) {
     ${markSvg}
     <circle class="mark-far" data-mark="far" data-distance="far" cx="${farX.toFixed(1)}" cy="${farY.toFixed(1)}" r="4.5"></circle>
     <circle class="mark-close" data-mark="close" data-distance="close" cx="${closeX.toFixed(1)}" cy="${closeY.toFixed(1)}" r="4.5"></circle>
-    ${impactLabel("close", closeX, closeY, closeIn)}
-    ${impactLabel("far", farX, farY, farIn)}
+    ${labelSvg}
+    ${aimSvg}
     ${axisSvg}
   `;
 }
@@ -896,7 +968,7 @@ function render() {
   applyTheme();
   $("unit-imperial").setAttribute("aria-checked", metric() ? "false" : "true");
   $("unit-metric").setAttribute("aria-checked", metric() ? "true" : "false");
-  $("unit-hint").textContent = metric() ? "mm, m, m/s, g" : "in, yd, ft/s, gr";
+  $("unit-hint").textContent = metric() ? "mm, m, m/s, g" : "inches, yd, ft/s, gr";
   $("chart-units").textContent = metric() ? "Millimeters vs meters" : "Inches vs yards";
   $("chart-close").textContent = poi
     ? `${formatSignedDrop(closeIn)} at ${formatDistanceNumber(state.closeYd)} ${unit}`
@@ -919,7 +991,7 @@ function render() {
     state.speedOverrideFps == null ? speedLabel : `${speedLabel}, typed`;
   $("add-speed-label").textContent = speedLabel;
   $("rule").textContent = `${FPS_PER_INCH} ft/s for each inch of barrel. A typed speed replaces it.`;
-  $("use-catalog").hidden = adding || state.customId != null || state.speedOverrideFps == null;
+  $("use-catalog").hidden = state.customId != null || state.speedOverrideFps == null;
   $("version").textContent = VERSION;
   const closeShown = displayDistance(state.closeYd);
   const farShown = displayDistance(state.farYd);
@@ -941,12 +1013,11 @@ function render() {
   syncSlider("paper-slider", state.paperYd, zMin, zMax);
   syncSlider("close-slider", state.closeYd, dMin, state.farYd - gapYd());
   syncSlider("far-slider", state.farYd, state.closeYd + gapYd(), dMax);
-  $("edit-fields").hidden = adding;
-  $("add-panel").hidden = !adding;
   const full = state.customAmmo.length >= CUSTOM_LIMIT;
-  $("add-ammo").disabled = adding || full;
+  $("add-ammo").disabled = full;
   $("add-ammo").textContent = full ? "40 loads saved" : "Add a load";
-  $("add-save").disabled = !addValid(readAdd());
+  $("add-save").disabled = !formDirty || !addValid(readAdd());
+  if (!formDirty) fillCustomForm();
 
   const savedCustom = activeCustom();
   setIfIdle("custom-brand", savedCustom?.brand || "");
@@ -976,21 +1047,30 @@ function render() {
     path.setAttribute("aria-label", "Type a G1 BC to plot the path.");
     $("target-caption").textContent = "This load has no published G1 BC. Type one to plot the path.";
   }
-  renderPicker();
-  const customOpen = adding || picker.brand === "custom";
-  $("weight-field").hidden = customOpen;
-  $("box-field").hidden = customOpen;
-  $("brand-name-field").hidden = adding || picker.brand !== "custom";
-  $("model-field").hidden = adding || picker.brand !== "custom";
-  $("upc-field").hidden = adding || picker.brand !== "custom";
+  const showCustom = state.customId != null;
+  $("brand-name-field").hidden = !showCustom;
+  $("model-field").hidden = !showCustom;
+  $("upc-field").hidden = !showCustom;
   renderAmmo();
+}
+
+function fillCustomForm() {
+  const custom = activeCustom();
+  if (!custom) return;
+  setIfIdle("add-brand", custom.brand || "");
+  setIfIdle("add-model", custom.model || "");
+  setIfIdle("add-upc", custom.upc || "");
+  setIfIdle("add-caliber", custom.caliber || "");
+  setIfIdle("add-weight", formatWeight(custom.weightGr));
+  setIfIdle("add-speed", String(Math.round(metric() ? muzzleFps(custom, state.barrelIn, null) * 0.3048 : muzzleFps(custom, state.barrelIn, null))));
+  setIfIdle("add-bc", formatBc(custom.bcG1));
 }
 
 function setUnits(units) {
   if (state.units === units) return;
   const wasMetric = metric();
   state.units = units;
-  if (adding && wasMetric !== metric()) convertAddFields(wasMetric);
+  if (wasMetric !== metric()) convertAddFields(wasMetric);
   save();
   render();
 }
@@ -1017,9 +1097,6 @@ function setTheme(theme) {
 
 function applyPreset(id) {
   const preset = presetById(id);
-  adding = false;
-  picker.hold = false;
-  picker.menuOpen = false;
   state.customId = null;
   state.presetId = preset.id;
   state.caliber = preset.caliber;
@@ -1033,9 +1110,7 @@ function applyPreset(id) {
 function applyCustom(id) {
   const custom = state.customAmmo.find((item) => item.id === id);
   if (!custom) return;
-  adding = false;
-  picker.hold = false;
-  picker.menuOpen = false;
+  formDirty = false;
   state.customId = custom.id;
   state.caliber = custom.caliber;
   state.weightGr = custom.weightGr;
@@ -1122,18 +1197,14 @@ function wireTips() {
   });
 }
 
-function startCustom() {
-  if (state.customAmmo.length >= CUSTOM_LIMIT) {
-    picker.hold = false;
-    render();
-    return;
-  }
-  adding = true;
-  picker.hold = true;
-  picker.brand = "custom";
-  picker.weight = "";
-  picker.menuOpen = false;
+function clearCustomForm() {
   for (const id of ["add-brand", "add-model", "add-upc", "add-caliber", "add-weight", "add-speed", "add-bc"]) $(id).value = "";
+}
+
+function startCustom() {
+  if (state.customAmmo.length >= CUSTOM_LIMIT) return;
+  formDirty = true;
+  clearCustomForm();
   render();
   $("add-brand").focus();
 }
@@ -1151,59 +1222,19 @@ function wire() {
     if (button.dataset.custom) applyCustom(button.dataset.custom);
     else applyPreset(button.dataset.preset);
   });
-  $("brand-pick").addEventListener("change", () => {
-    if ($("brand-pick").value === "custom") {
-      startCustom();
-      return;
-    }
-    adding = false;
-    picker.hold = true;
-    picker.brand = $("brand-pick").value;
-    picker.weight = "";
-    picker.menuOpen = false;
-    render();
-  });
-  $("weight-pick").addEventListener("change", () => {
-    picker.hold = true;
-    picker.weight = $("weight-pick").value;
-    const matches = loadsFor(picker.brand, picker.weight);
-    if (matches.length === 1) {
-      applyPreset(matches[0].id);
-      return;
-    }
-    picker.menuOpen = matches.length > 1;
-    render();
-  });
-  $("load-pick").addEventListener("click", (event) => {
-    event.stopPropagation();
-    if (!loadsFor(picker.brand, picker.weight).length) return;
-    picker.menuOpen = !picker.menuOpen;
-    render();
-  });
-  $("load-menu").addEventListener("click", (event) => {
-    const option = event.target.closest("[data-preset]");
-    if (!option) return;
-    applyPreset(option.dataset.preset);
-  });
-  document.addEventListener("click", (event) => {
-    if (!picker.menuOpen) return;
-    if (event.target.closest("#load-pick") || event.target.closest("#load-menu")) return;
-    picker.menuOpen = false;
-    render();
-  });
   $("add-ammo").addEventListener("click", () => {
     if ($("add-ammo").disabled) return;
     startCustom();
   });
   $("add-cancel").addEventListener("click", () => {
-    adding = false;
-    picker.hold = false;
-    picker.menuOpen = false;
+    formDirty = false;
+    clearCustomForm();
     render();
   });
   for (const id of ["add-brand", "add-model", "add-upc", "add-caliber", "add-weight", "add-speed", "add-bc"]) {
     $(id).addEventListener("input", () => {
-      $("add-save").disabled = !addValid(readAdd());
+      formDirty = true;
+      $("add-save").disabled = !formDirty || !addValid(readAdd());
     });
   }
   $("add-save").addEventListener("click", () => {
@@ -1221,6 +1252,7 @@ function wire() {
       bcG1: value.bc,
     };
     state.customAmmo.push(entry);
+    formDirty = false;
     applyCustom(entry.id);
   });
   $("custom-brand").addEventListener("input", () => {
