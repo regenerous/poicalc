@@ -1144,23 +1144,19 @@ function render() {
   $("unit-metric").setAttribute("aria-checked", metric() ? "true" : "false");
   $("unit-hint").textContent = metric() ? "mm, m, m/s, g" : "inches, yd, ft/s, gr";
   $("chart-close").textContent = poi
-    ? `${formatSignedDrop(closeIn)} at ${formatDistanceNumber(state.closeYd)} ${unit}`
+    ? `${formatDistanceNumber(state.closeYd)} ${unit}: ${formatSignedDrop(closeIn)}`
     : "Type a G1 BC";
   $("chart-far").textContent = poi
-    ? `${formatSignedDrop(farIn)} at ${formatDistanceNumber(state.farYd)} ${unit}`
+    ? `${formatDistanceNumber(state.farYd)} ${unit}: ${formatSignedDrop(farIn)}`
     : "Type a G1 BC";
   const ends = poi ? extremaInRange(poi) : null;
   $("chart-min").hidden = !ends;
   $("chart-max").hidden = !ends;
   $("chart-spread").hidden = !ends;
-  $("chart-min").textContent = ends
-    ? `Min ${formatSignedDrop(ends.min.inches)} at ${formatDistanceNumber(ends.min.yd)} ${unit}`
-    : "";
-  $("chart-max").textContent = ends
-    ? `Max ${formatSignedDrop(ends.max.inches)} at ${formatDistanceNumber(ends.max.yd)} ${unit}`
-    : "";
+  $("chart-min").textContent = ends ? `Min: ${formatSignedDrop(ends.min.inches)}` : "";
+  $("chart-max").textContent = ends ? `Max: ${formatSignedDrop(ends.max.inches)}` : "";
   $("chart-spread").textContent = ends
-    ? `Max − Min ${formatDrop(ends.max.inches - ends.min.inches)}`
+    ? `Max − Min: ${formatDrop(ends.max.inches - ends.min.inches)}`
     : "";
   $("close-unit").textContent = unit;
   $("far-unit").textContent = unit;
