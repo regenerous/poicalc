@@ -157,6 +157,10 @@
 
         <div id="edit-fields" class="load-fields">
           <div class="fields">
+            <label class="field" id="brand-name-field" hidden>
+              <button type="button" class="tip-title" data-tip="The maker on the box. Leave it blank if you do not want a name." aria-expanded="false">Brand name</button>
+              <input id="custom-brand" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Brand name">
+            </label>
             <label class="field" id="model-field" hidden>
               <button type="button" class="tip-title" data-tip="The model number on the box. Leave it blank if the box has none." aria-expanded="false">Model</button>
               <input id="model" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Model">
@@ -188,6 +192,10 @@
           <p class="add-title">Custom load</p>
           <div class="fields">
             <label class="field">
+              <button type="button" class="tip-title" data-tip="The maker on the box. Leave it blank if you do not want a name." aria-expanded="false">Brand name</button>
+              <input id="add-brand" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Custom brand name">
+            </label>
+            <label class="field">
               <button type="button" class="tip-title" data-tip="The model number on the box. Leave it blank if the box has none." aria-expanded="false">Model</button>
               <input id="add-model" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Custom model">
             </label>
@@ -212,7 +220,7 @@
               <input id="add-bc" inputmode="decimal" autocomplete="off" aria-label="New G1 ballistic coefficient">
             </label>
           </div>
-          <p class="add-hint">Type a caliber, grain weight, and muzzle speed. Model, UPC, and G1 BC stay empty unless you type them.</p>
+          <p class="add-hint">Type a caliber, grain weight, and muzzle speed. Brand name, model, UPC, and G1 BC stay empty unless you type them.</p>
           <div class="add-actions">
             <button type="button" id="add-cancel">Cancel</button>
             <button type="button" id="add-save" disabled>Save ammo</button>

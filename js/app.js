@@ -69,10 +69,11 @@ function sanitizeCustom(list) {
     }
     const barrelIn = clampNum(item.barrelIn, 2, 32, DEFAULTS.barrelIn);
     if (weightGr == null || speedFps == null) continue;
+    const brand = typeof item.brand === "string" ? item.brand.trim().slice(0, 48) : "";
     const model = typeof item.model === "string" ? item.model.trim().slice(0, 48) : "";
     const upc = typeof item.upc === "string" ? item.upc.replace(/\D/g, "").slice(0, 14) : "";
     seen.add(id);
-    out.push({ id, caliber, weightGr, speedFps, bcG1, barrelIn, model, upc });
+    out.push({ id, caliber, weightGr, speedFps, bcG1, barrelIn, brand, model, upc });
   }
   return out;
 }
@@ -618,7 +619,7 @@ function paintChoice(parent, preset, custom) {
     art.innerHTML = customSvg(custom.caliber);
     const ids = document.createElement("span");
     ids.className = "load-ids";
-    ids.append(idLine(custom.model || custom.caliber || "Custom", custom.upc || ""));
+    ids.append(idLine(custom.model || custom.brand || custom.caliber || "Custom", custom.upc || ""));
     parent.append(art, ids);
     return;
   }
@@ -784,12 +785,12 @@ function renderAmmo() {
       const grains = selected ? state.weightGr : custom.weightGr;
       list.append(
         choiceButton({
-          name: "Custom",
+          name: custom.brand || "Custom",
           detail: detailText(grains, fps, custom.model),
           badge: selected ? "In use" : "",
           selected,
           customId: custom.id,
-          label: `Custom ${group.label}, ${detailText(grains, fps)}`,
+          label: `${custom.brand || "Custom"} ${group.label}, ${detailText(grains, fps)}`,
         }),
       );
     }
@@ -812,6 +813,7 @@ function readAdd() {
   const speedRaw = Number(String($("add-speed").value).replace(/,/g, "").trim());
   const bcText = String($("add-bc").value).replace(/,/g, "").trim();
   return {
+    brand: $("add-brand").value.trim().slice(0, 48),
     model: $("add-model").value.trim().slice(0, 48),
     upc: $("add-upc").value.replace(/\D/g, "").slice(0, 14),
     caliber,
@@ -916,6 +918,7 @@ function render() {
   $("add-save").disabled = !addValid(readAdd());
 
   const savedCustom = activeCustom();
+  setIfIdle("custom-brand", savedCustom?.brand || "");
   setIfIdle("model", savedCustom?.model || "");
   setIfIdle("upc", savedCustom?.upc || "");
   setIfIdle("caliber", state.caliber);
@@ -945,6 +948,7 @@ function render() {
   const customOpen = adding || picker.brand === "custom";
   $("weight-field").hidden = customOpen;
   $("box-field").hidden = customOpen;
+  $("brand-name-field").hidden = adding || picker.brand !== "custom";
   $("model-field").hidden = adding || picker.brand !== "custom";
   $("upc-field").hidden = adding || picker.brand !== "custom";
   renderAmmo();
@@ -1097,9 +1101,9 @@ function startCustom() {
   picker.brand = "custom";
   picker.weight = "";
   picker.menuOpen = false;
-  for (const id of ["add-model", "add-upc", "add-caliber", "add-weight", "add-speed", "add-bc"]) $(id).value = "";
+  for (const id of ["add-brand", "add-model", "add-upc", "add-caliber", "add-weight", "add-speed", "add-bc"]) $(id).value = "";
   render();
-  $("add-model").focus();
+  $("add-brand").focus();
 }
 
 function wire() {
@@ -1165,7 +1169,7 @@ function wire() {
     picker.menuOpen = false;
     render();
   });
-  for (const id of ["add-model", "add-upc", "add-caliber", "add-weight", "add-speed", "add-bc"]) {
+  for (const id of ["add-brand", "add-model", "add-upc", "add-caliber", "add-weight", "add-speed", "add-bc"]) {
     $(id).addEventListener("input", () => {
       $("add-save").disabled = !addValid(readAdd());
     });
@@ -1175,6 +1179,7 @@ function wire() {
     if (!addValid(value) || state.customAmmo.length >= CUSTOM_LIMIT) return;
     const entry = {
       id: `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      brand: value.brand,
       model: value.model,
       upc: value.upc,
       caliber: value.caliber,
@@ -1185,6 +1190,20 @@ function wire() {
     };
     state.customAmmo.push(entry);
     applyCustom(entry.id);
+  });
+  $("custom-brand").addEventListener("input", () => {
+    const custom = activeCustom();
+    if (!custom) return;
+    custom.brand = $("custom-brand").value.slice(0, 48);
+    save();
+    render();
+  });
+  $("custom-brand").addEventListener("blur", () => {
+    const custom = activeCustom();
+    if (!custom) return;
+    custom.brand = $("custom-brand").value.trim().slice(0, 48);
+    save();
+    render();
   });
   $("model").addEventListener("input", () => {
     const custom = activeCustom();
