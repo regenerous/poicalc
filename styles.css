@@ -501,6 +501,26 @@ input {
   gap: 8px;
 }
 
+.use-line {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.fields:has(.field:not([hidden])) + .use-line {
+  margin-top: 8px;
+}
+
+.use-line .field {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.use-line .field input {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
 .field span,
 .field .tip-title {
   display: block;
@@ -789,8 +809,10 @@ input {
 .chart-bg { fill: var(--bg); stroke: var(--stroke-strong); }
 .los { stroke: var(--secondary); }
 .path-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.drop-line-close { stroke: var(--accent); stroke-width: 1.25; }
-.drop-line-far { stroke: var(--far); stroke-width: 1.25; }
+.tick-line { stroke: var(--tertiary); stroke-width: 0.75; }
+.tick-line-close { stroke: var(--accent); }
+.tick-line-far { stroke: var(--far); }
+.leader { stroke: var(--secondary); stroke-width: 0.75; }
 .mark-muzzle { fill: var(--secondary); }
 .mark-open { fill: var(--card); stroke: var(--text); stroke-width: 1.25; }
 .mark-close { fill: var(--accent); }

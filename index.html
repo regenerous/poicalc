@@ -24,7 +24,7 @@
     <meta name="description" content="Point of impact for one zeroed rifle or pistol.">
     <title>POI</title>
     <link rel="manifest" href="./manifest.webmanifest">
-    <link rel="apple-touch-icon" href="./icons/icon-180.png">
+    <link rel="apple-touch-icon" href="./icons/icon-180.png" sizes="180x180">
     <link rel="icon" href="./icons/icon-192.png" type="image/png">
     <link rel="stylesheet" href="./styles.css">
   </head>
@@ -149,6 +149,8 @@
           <span class="chart-impacts">
             <span id="chart-close"></span>
             <span id="chart-far"></span>
+            <span id="chart-min"></span>
+            <span id="chart-max"></span>
           </span>
         </div>
         <div class="chart-frame">
@@ -176,10 +178,8 @@
               <button type="button" class="tip-title" data-tip="The UPC printed on the box, if it has one. Leave it blank when there is no UPC." aria-expanded="false">UPC</button>
               <input id="upc" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="UPC">
             </label>
-            <label class="field">
-              <button type="button" class="tip-title" data-tip="The cartridge name, such as .223 Rem or 9mm. Loads with the same name sit in one group." aria-expanded="false">Caliber</button>
-              <input id="caliber" autocomplete="off" autocapitalize="off" spellcheck="false">
-            </label>
+          </div>
+          <div class="use-line">
             <label class="field">
               <button type="button" class="tip-title" id="weight-label" data-tip="Bullet weight from the box. The path uses muzzle speed and G1 BC. Weight keeps each load recognizable." aria-expanded="false">Weight</button>
               <input id="weight" inputmode="decimal" autocomplete="off">

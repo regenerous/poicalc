@@ -415,6 +415,24 @@ function drawTarget(closeIn, farIn) {
   $("target-caption").textContent = `Center is the aim point. Outer ring is ${ring.label}.`;
 }
 
+function extremaInRange(poi) {
+  const reach = Math.max(poi.reachYd, state.farYd, state.closeYd, 25);
+  const xMax = reach * 1.06;
+  const shown = poi.samples.filter((point) => point.yd <= xMax);
+  const inRange = shown.length ? shown : poi.samples;
+  let low = inRange[0];
+  let high = inRange[0];
+  for (const point of inRange) {
+    if (point.inches < low.inches) low = point;
+    if (point.inches > high.inches) high = point;
+  }
+  return low && high ? { min: low, max: high } : null;
+}
+
+function onAimInches(inches) {
+  return Math.abs(inches) < 0.05;
+}
+
 function drawPath(poi) {
   const svg = $("path");
   const width = 356;
@@ -444,7 +462,8 @@ function drawPath(poi) {
   yMax = mid + span / 2;
   const xOf = (yd) => pad.l + (yd / xMax) * plotW;
   const yOf = (inches) => pad.t + ((yMax - inches) / (yMax - yMin)) * plotH;
-  const curve = thinSamples(shown, [poi.climbYd, poi.fallYd, state.closeYd, state.farYd]).map((point) => ({
+  const ends = extremaInRange(poi);
+  const curve = thinSamples(shown, [poi.climbYd, poi.fallYd, state.closeYd, state.farYd, ends?.min.yd, ends?.max.yd]).map((point) => ({
     x: xOf(point.yd),
     y: yOf(point.inches),
   }));
@@ -467,22 +486,14 @@ function drawPath(poi) {
       x: xOf(mark.yd),
       y: yOf(0),
       r: nearImpact ? 7 : 3.5,
-      text: `${formatDistanceNumber(mark.yd)} ${distanceUnit()}`,
     };
   });
-  const inRange = shown.length ? shown : poi.samples;
-  let lowPoint = inRange[0];
-  let highPoint = inRange[0];
-  for (const point of inRange) {
-    if (point.inches < lowPoint.inches) lowPoint = point;
-    if (point.inches > highPoint.inches) highPoint = point;
-  }
   const extrema = [];
-  if (lowPoint && highPoint) {
+  if (ends) {
     const seen = new Set();
     for (const item of [
-      { kind: "min", yd: lowPoint.yd, inches: lowPoint.inches },
-      { kind: "max", yd: highPoint.yd, inches: highPoint.inches },
+      { kind: "min", yd: ends.min.yd, inches: ends.min.inches },
+      { kind: "max", yd: ends.max.yd, inches: ends.max.inches },
     ]) {
       const key = item.yd.toFixed(2);
       if (seen.has(key)) continue;
@@ -498,12 +509,13 @@ function drawPath(poi) {
     }
   }
 
-  const axis = [
-    { yd: 0, role: "" },
-    { yd: state.closeYd, role: "close" },
-    { yd: state.farYd, role: "far" },
+  const marked = [
+    { kind: "close", role: "close", yd: state.closeYd, inches: closeIn, x: closeX, y: closeY, r: 4.5 },
+    { kind: "far", role: "far", yd: state.farYd, inches: farIn, x: farX, y: farY, r: 4.5 },
+    ...placed.map((mark) => ({ kind: mark.kind, role: "", yd: mark.yd, inches: 0, x: mark.x, y: mark.y, r: mark.r })),
+    ...extrema.map((mark) => ({ kind: mark.kind, role: "", yd: mark.yd, inches: mark.inches, x: mark.x, y: mark.y, r: mark.r })),
   ];
-  if (reach > state.farYd + 1) axis.push({ yd: reach, role: "" });
+  const axisY = height - pad.b;
 
   const unit = distanceUnit();
   const bits = [];
@@ -515,18 +527,15 @@ function drawPath(poi) {
   );
 
   const dots = [
-    { x: closeX, y: closeY, r: 6 },
-    { x: farX, y: farY, r: 6 },
     { x: xOf(0), y: yOf(-state.sightIn), r: 4 },
-    ...placed.map((mark) => ({ x: mark.x, y: mark.y, r: mark.r + 1 })),
-    ...extrema.map((mark) => ({ x: mark.x, y: mark.y, r: mark.r + 1 })),
+    ...marked.map((mark) => ({ x: mark.x, y: mark.y, r: mark.r + 1 })),
   ];
   const textWidth = (text) => text.length * 5.7 + 2;
   const boxFor = (x, y, wide, anchor) => {
     const left = anchor === "start" ? x : anchor === "end" ? x - wide : x - wide / 2;
     return { left, right: left + wide, top: y - 9, bottom: y + 2 };
   };
-  const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  const overlaps = (a, b) => a.left < b.right + 3 && a.right > b.left - 3 && a.top < b.bottom + 2 && a.bottom > b.top - 2;
   const hitsDot = (box) =>
     dots.some((dot) => {
       const nx = Math.max(box.left, Math.min(dot.x, box.right));
@@ -534,7 +543,7 @@ function drawPath(poi) {
       return (nx - dot.x) ** 2 + (ny - dot.y) ** 2 <= (dot.r + 2) ** 2;
     });
   const hitsCurve = (box) => {
-    const pad = 3;
+    const pad = 2;
     for (let i = 0; i < curve.length; i += 1) {
       const point = curve[i];
       if (
@@ -552,51 +561,70 @@ function drawPath(poi) {
   const placeOffsetLabel = (label, taken) => {
     const wide = textWidth(label.text);
     const dirs = label.inches > 0.05 ? [-1, 1] : [1, -1];
-    const shifts = [0, 26, -26, 46, -46, 66, -66];
-    for (const dir of dirs) {
-      for (const shift of shifts) {
-        const anchor = shift > 14 ? "start" : shift < -14 ? "end" : "middle";
-        const x = label.x + shift;
-        const y = dir < 0 ? label.y - 16 : label.y + 18;
-        const box = boxFor(x, y, wide, anchor);
-        if (box.top < 3 || box.bottom > height - 16 || box.left < 2 || box.right > width - 2) continue;
-        if (hitsLine(box) || hitsDot(box) || hitsCurve(box) || taken.some((item) => overlaps(box, item))) continue;
-        return { x, y, anchor, box };
+    const shifts = [0, 12, -12, 24, -24, 40, -40, 56, -56, 74, -74, 92, -92];
+    const clear = (x, y, anchor) => {
+      const box = boxFor(x, y, wide, anchor);
+      if (box.top < 3 || box.bottom > height - 16 || box.left < 2 || box.right > width - 2) return null;
+      if (hitsLine(box) || hitsDot(box) || hitsCurve(box) || taken.some((item) => overlaps(box, item))) return null;
+      return { x, y, anchor, box };
+    };
+    for (const lift of [0, 4, 8, 14, 22]) {
+      for (const dir of dirs) {
+        for (const shift of shifts) {
+          const anchor = shift > 6 ? "start" : shift < -6 ? "end" : "middle";
+          const y = dir < 0 ? label.y - 11 - lift : label.y + 17 + lift;
+          const spot = clear(label.x + shift, y, anchor);
+          if (spot) return spot;
+        }
       }
     }
     const dir = dirs[0];
-    const y = dir < 0 ? Math.max(12, label.y - 30) : Math.min(height - 18, label.y + 30);
-    const x = Math.min(width - wide - 4, Math.max(8, label.x + 24));
+    for (let shift = 8; shift < width; shift += 12) {
+      const y = dir < 0 ? label.y - 14 : label.y + 20;
+      const right = clear(label.x + shift, y, "start");
+      if (right) return right;
+      const left = clear(label.x - shift, y, "end");
+      if (left) return left;
+    }
+    const y = dir < 0 ? Math.max(12, label.y - 22) : Math.min(height - 18, label.y + 24);
+    const x = Math.min(width - wide - 4, Math.max(8, label.x + 8));
     return { x, y, anchor: "start", box: boxFor(x, y, wide, "start") };
   };
-  const offsetLabels = [
-    { kind: "close", cls: "cross-label", text: formatSignedDrop(closeIn), x: closeX, y: closeY, inches: closeIn, attr: "data-distance" },
-    { kind: "far", cls: "cross-label far-label", text: formatSignedDrop(farIn), x: farX, y: farY, inches: farIn, attr: "data-distance" },
-    ...extrema.map((mark) => ({
+  const offsetLabels = marked
+    .filter((mark) => !onAimInches(mark.inches))
+    .map((mark) => ({
       kind: mark.kind,
-      cls: "cross-label",
+      cls: mark.role === "far" ? "cross-label far-label" : "cross-label",
       text: formatSignedDrop(mark.inches),
       x: mark.x,
       y: mark.y,
+      r: mark.r,
       inches: mark.inches,
-      attr: "data-extreme",
-    })),
-    ...placed.map((mark) => ({
-      kind: mark.kind,
-      cls: "cross-label",
-      text: mark.text,
-      x: mark.x,
-      y: mark.y,
-      inches: 0,
-      attr: "data-crossing",
-    })),
-  ].sort((a, b) => Math.abs(b.inches) - Math.abs(a.inches));
+      attr: mark.kind === "min" || mark.kind === "max" ? "data-extreme" : "data-distance",
+    }))
+    .sort((a, b) => Math.abs(b.inches) - Math.abs(a.inches));
   const taken = [];
-  const labelSvg = offsetLabels
-    .map((label) => {
-      const spot = placeOffsetLabel(label, taken);
-      taken.push(spot.box);
-      return `<text class="${label.cls}" ${label.attr}="${label.kind}" x="${spot.x.toFixed(1)}" y="${spot.y.toFixed(1)}" text-anchor="${spot.anchor}">${label.text}</text>`;
+  const placedLabels = offsetLabels.map((label) => {
+    const spot = placeOffsetLabel(label, taken);
+    taken.push(spot.box);
+    return { label, spot };
+  });
+  const labelSvg = placedLabels
+    .map(({ label, spot }) => `<text class="${label.cls}" ${label.attr}="${label.kind}" x="${spot.x.toFixed(1)}" y="${spot.y.toFixed(1)}" text-anchor="${spot.anchor}">${label.text}</text>`)
+    .join("");
+  const leaderSvg = placedLabels
+    .map(({ label, spot }) => {
+      const box = spot.box;
+      const px = Math.max(box.left, Math.min(label.x, box.right));
+      const py = Math.max(box.top, Math.min(label.y, box.bottom));
+      const dx = label.x - px;
+      const dy = label.y - py;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 1) return "";
+      const stop = label.r + 1.5;
+      const x2 = label.x - (dx / dist) * Math.min(stop, dist - 0.5);
+      const y2 = label.y - (dy / dist) * Math.min(stop, dist - 0.5);
+      return `<line class="leader" data-leader="${label.kind}" x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"></line>`;
     })
     .join("");
   const aimText = "Aim Point";
@@ -630,13 +658,57 @@ function drawPath(poi) {
     ),
   ].join("");
 
-  const axisSvg = axis
+  const rawTicks = [{ yd: 0, x: pad.l, role: "", kind: "zero" }];
+  for (const mark of marked) rawTicks.push({ yd: mark.yd, x: mark.x, role: mark.role, kind: mark.kind });
+  rawTicks.sort((a, b) => a.x - b.x);
+  const ticks = [];
+  for (const tick of rawTicks) {
+    const prev = ticks[ticks.length - 1];
+    if (prev && Math.abs(prev.x - tick.x) < 3) {
+      if (!prev.role && tick.role) {
+        prev.role = tick.role;
+        prev.kind = tick.kind;
+      }
+      continue;
+    }
+    ticks.push({ ...tick });
+  }
+  const axisPlaced = [];
+  const axisSvg = ticks
     .map((tick) => {
-      const x = tick.yd === 0 ? pad.l : xOf(tick.yd);
-      const anchor = tick.yd === 0 ? "start" : "middle";
+      const label = Math.abs(tick.yd) < 0.05 ? "0" : formatDistanceNumber(tick.yd);
+      const wide = textWidth(label);
+      let anchor = tick.kind === "zero" ? "start" : "middle";
+      let x = tick.kind === "zero" ? pad.l : tick.x;
+      let box = boxFor(x, height - 7, wide, anchor);
+      const clash = () => axisPlaced.some((item) => overlaps(box, item));
+      if (clash()) {
+        anchor = "start";
+        x = Math.min(width - 2, tick.x + 3);
+        box = boxFor(x, height - 7, wide, anchor);
+      }
+      if (box.right > width - 2) {
+        anchor = "end";
+        x = width - 2;
+        box = boxFor(x, height - 7, wide, anchor);
+      }
+      if (box.left < 2) {
+        anchor = "start";
+        x = 2;
+        box = boxFor(x, height - 7, wide, anchor);
+      }
+      axisPlaced.push(box);
       const cls = tick.role === "far" ? "axis-far" : tick.role === "close" ? "axis-close" : "axis-label";
-      const label = tick.yd === 0 ? "0" : formatDistanceNumber(tick.yd);
-      return `<text class="${cls}" x="${x.toFixed(1)}" y="${height - 7}" text-anchor="${anchor}">${label}</text>`;
+      const crossing = tick.kind === "climb" || tick.kind === "fall" ? ` data-crossing="${tick.kind}"` : "";
+      return `<text class="${cls}" data-tick="${tick.kind}"${crossing} x="${x.toFixed(1)}" y="${height - 7}" text-anchor="${anchor}">${label}</text>`;
+    })
+    .join("");
+  const tickLines = marked
+    .map((mark) => {
+      const y1 = Math.min(axisY - 1, mark.y + mark.r);
+      if (axisY - y1 < 2) return "";
+      const cls = mark.role === "far" ? "tick-line tick-line-far" : mark.role === "close" ? "tick-line tick-line-close" : "tick-line";
+      return `<line class="${cls}" data-tick-line="${mark.kind}" x1="${mark.x.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${mark.x.toFixed(1)}" y2="${axisY.toFixed(1)}"></line>`;
     })
     .join("");
 
@@ -644,12 +716,12 @@ function drawPath(poi) {
     <rect class="chart-bg" x="0.5" y="0.5" width="${width - 1}" height="${height - 1}" rx="10"></rect>
     <line class="los" x1="${xOf(0).toFixed(1)}" y1="${losY.toFixed(1)}" x2="${xOf(xMax).toFixed(1)}" y2="${losY.toFixed(1)}" stroke-width="1.25" stroke-dasharray="4 3"></line>
     <path class="path-line" d="${smoothPath(curve)}"></path>
-    <line class="drop-line-close" x1="${closeX.toFixed(1)}" y1="${losY.toFixed(1)}" x2="${closeX.toFixed(1)}" y2="${closeY.toFixed(1)}"></line>
-    <line class="drop-line-far" x1="${farX.toFixed(1)}" y1="${losY.toFixed(1)}" x2="${farX.toFixed(1)}" y2="${farY.toFixed(1)}"></line>
+    ${tickLines}
     <circle class="mark-muzzle" cx="${xOf(0).toFixed(1)}" cy="${yOf(-state.sightIn).toFixed(1)}" r="2.5"></circle>
     ${markSvg}
     <circle class="mark-far" data-mark="far" data-distance="far" cx="${farX.toFixed(1)}" cy="${farY.toFixed(1)}" r="4.5"></circle>
     <circle class="mark-close" data-mark="close" data-distance="close" cx="${closeX.toFixed(1)}" cy="${closeY.toFixed(1)}" r="4.5"></circle>
+    ${leaderSvg}
     ${labelSvg}
     ${aimSvg}
     ${axisSvg}
@@ -1017,6 +1089,15 @@ function render() {
   $("chart-far").textContent = poi
     ? `${formatSignedDrop(farIn)} at ${formatDistanceNumber(state.farYd)} ${unit}`
     : "Type a G1 BC";
+  const ends = poi ? extremaInRange(poi) : null;
+  $("chart-min").hidden = !ends;
+  $("chart-max").hidden = !ends;
+  $("chart-min").textContent = ends
+    ? `${formatSignedDrop(ends.min.inches)} at ${formatDistanceNumber(ends.min.yd)} ${unit}`
+    : "";
+  $("chart-max").textContent = ends
+    ? `${formatSignedDrop(ends.max.inches)} at ${formatDistanceNumber(ends.max.yd)} ${unit}`
+    : "";
   $("close-unit").textContent = unit;
   $("far-unit").textContent = unit;
   $("barrel-unit").textContent = lengthUnit();
@@ -1064,7 +1145,6 @@ function render() {
   setIfIdle("custom-brand", savedCustom?.brand || "");
   setIfIdle("model", savedCustom?.model || "");
   setIfIdle("upc", savedCustom?.upc || "");
-  setIfIdle("caliber", state.caliber);
   setIfIdle("weight", formatWeight(state.weightGr));
   setIfIdle("speed", String(Math.round(metric() ? usedFps() * 0.3048 : usedFps())));
   setIfIdle("bc", formatBc(state.bc));
@@ -1332,16 +1412,6 @@ function wire() {
     render();
   });
   $("upc").addEventListener("blur", () => render());
-  $("caliber").addEventListener("input", () => {
-    const text = $("caliber").value;
-    if (!text.trim() || text.length > 40) return;
-    state.caliber = text;
-    const custom = activeCustom();
-    if (custom) custom.caliber = text.trim();
-    save();
-    render();
-  });
-  $("caliber").addEventListener("blur", () => render());
   onNumber(
     "weight",
     (n) => (metric() ? n / GRAIN : n),
