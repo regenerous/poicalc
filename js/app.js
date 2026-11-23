@@ -22,6 +22,7 @@ const DEFAULTS = {
   speedOverrideFps: null,
   sightIn: 1.93,
   zeroYd: 50,
+  paperYd: 50,
   closeYd: 5,
   farYd: 100,
 };
@@ -90,6 +91,7 @@ function sanitize(data) {
   next.barrelIn = clampNum(data.barrelIn, 2, 32, DEFAULTS.barrelIn);
   next.sightIn = clampNum(data.sightIn, 0, 6, DEFAULTS.sightIn);
   next.zeroYd = clampNum(data.zeroYd, 5, 800, DEFAULTS.zeroYd);
+  next.paperYd = clampNum(data.paperYd, 5, 800, next.zeroYd);
   let far = clampNum(data.farYd, 5, 1200, null);
   let close = clampNum(data.closeYd, 5, 1200, null);
   if (far == null) far = clampNum(data.distanceYd, 5, 1200, DEFAULTS.farYd);
@@ -354,6 +356,25 @@ function aimWord(inches) {
   if (inches < -0.05) return "below aim";
   if (inches > 0.05) return "above aim";
   return "on aim";
+}
+
+function paperOffsetText(inches, sameDistance) {
+  if (sameDistance) return "On aim";
+  if (!Number.isFinite(inches)) return "Type a G1 BC";
+  if (Math.abs(inches) < 0.05) return "On aim";
+  return `${formatDrop(inches)} ${inches < 0 ? "low" : "high"}`;
+}
+
+function inchesOnPath(poi, yards) {
+  const last = poi.samples[poi.samples.length - 1];
+  if (last && yards <= last.yd + 0.2) return inchesAt(poi.samples, yards);
+  return solvePoi({
+    speedFps: usedFps(),
+    bc: state.bc,
+    sightIn: state.sightIn,
+    zeroYd: state.zeroYd,
+    distanceYd: yards,
+  }).impactIn;
 }
 
 function drawTarget(closeIn, farIn) {
@@ -852,6 +873,7 @@ function render() {
   const [dMin, dMax] = distanceBounds();
   const [zMin, zMax] = zeroBounds();
   state.zeroYd = clampNum(state.zeroYd, zMin, zMax, state.zeroYd);
+  state.paperYd = clampNum(state.paperYd, zMin, zMax, state.zeroYd);
   separateDistances();
 
   const ready = state.bc != null && state.bc >= 0.05 && state.bc <= 1.5;
@@ -866,6 +888,8 @@ function render() {
     : null;
   const closeIn = poi ? inchesAt(poi.samples, state.closeYd) : null;
   const farIn = poi ? inchesAt(poi.samples, state.farYd) : null;
+  const paperIn = poi ? inchesOnPath(poi, state.paperYd) : null;
+  const paperSame = displayDistance(state.paperYd) === displayDistance(state.zeroYd);
   const unit = distanceUnit();
 
   applyTheme();
@@ -884,6 +908,8 @@ function render() {
   $("barrel-unit").textContent = lengthUnit();
   $("sight-unit").textContent = lengthUnit();
   $("zero-unit").textContent = unit;
+  $("paper-unit").textContent = unit;
+  $("paper-offset").textContent = paperOffsetText(paperIn, paperSame);
   const weightLabel = metric() ? "Weight (g)" : "Grain";
   const speedLabel = `Muzzle speed (${speedUnit()})`;
   $("weight-label").textContent = weightLabel;
@@ -897,6 +923,7 @@ function render() {
   const closeShown = displayDistance(state.closeYd);
   const farShown = displayDistance(state.farYd);
   const zeroShown = displayDistance(state.zeroYd);
+  const paperShown = displayDistance(state.paperYd);
   const dMinShown = displayDistance(dMin);
   const dMaxShown = displayDistance(dMax);
   const zMinShown = displayDistance(zMin);
@@ -907,7 +934,10 @@ function render() {
   $("far-inc").disabled = farShown >= dMaxShown;
   $("zero-dec").disabled = zeroShown <= zMinShown;
   $("zero-inc").disabled = zeroShown >= zMaxShown;
+  $("paper-dec").disabled = paperShown <= zMinShown;
+  $("paper-inc").disabled = paperShown >= zMaxShown;
   syncSlider("zero-slider", state.zeroYd, zMin, zMax);
+  syncSlider("paper-slider", state.paperYd, zMin, zMax);
   syncSlider("close-slider", state.closeYd, dMin, state.farYd - gapYd());
   syncSlider("far-slider", state.farYd, state.closeYd + gapYd(), dMax);
   $("edit-fields").hidden = adding;
@@ -931,6 +961,7 @@ function render() {
   setIfIdle("barrel", formatBarrel(state.barrelIn));
   setIfIdle("sight", formatSight(state.sightIn));
   setIfIdle("zero", formatDistanceNumber(state.zeroYd));
+  setIfIdle("paper", formatDistanceNumber(state.paperYd));
 
   if (poi) {
     drawTarget(closeIn, farIn);
@@ -1289,6 +1320,9 @@ function wire() {
   onNumber("zero", (n) => (metric() ? n / 0.9144 : n), zeroBounds, (yards) => {
     state.zeroYd = yards;
   });
+  onNumber("paper", (n) => (metric() ? n / 0.9144 : n), zeroBounds, (yards) => {
+    state.paperYd = yards;
+  });
   onNumber("close", (n) => (metric() ? n / 0.9144 : n), distanceBounds, assignClose);
   onNumber("far", (n) => (metric() ? n / 0.9144 : n), distanceBounds, assignFar);
   $("zero-dec").addEventListener("click", () => {
@@ -1300,6 +1334,18 @@ function wire() {
   $("zero-inc").addEventListener("click", () => {
     const [min, max] = zeroBounds();
     state.zeroYd = stepShown(state.zeroYd, 1, min, max);
+    save();
+    render();
+  });
+  $("paper-dec").addEventListener("click", () => {
+    const [min, max] = zeroBounds();
+    state.paperYd = stepShown(state.paperYd, -1, min, max);
+    save();
+    render();
+  });
+  $("paper-inc").addEventListener("click", () => {
+    const [min, max] = zeroBounds();
+    state.paperYd = stepShown(state.paperYd, 1, min, max);
     save();
     render();
   });
@@ -1330,6 +1376,10 @@ function wire() {
   onSlider("zero-slider", (yards) => {
     const [min, max] = zeroBounds();
     state.zeroYd = clampNum(yards, min, max, state.zeroYd);
+  });
+  onSlider("paper-slider", (yards) => {
+    const [min, max] = zeroBounds();
+    state.paperYd = clampNum(yards, min, max, state.paperYd);
   });
   onSlider("close-slider", (yards) => {
     const [min] = distanceBounds();

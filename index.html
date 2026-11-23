@@ -68,21 +68,38 @@
         </div>
       </section>
 
-      <section class="panel" id="distance-panel" aria-label="Zero, close target distance, and far target distance">
+      <section class="panel" id="distance-panel" aria-label="Desired zero, zero target distance, close target distance, and far target distance">
         <div class="play">
           <div class="play-control" data-mark="zero">
             <div class="play-line">
-              <h2><button type="button" class="tip-title" data-tip="Distance that you zeroed your sights/optic at." aria-expanded="false">Zero</button></h2>
+              <h2><button type="button" class="tip-title" data-tip="Distance you want the bullet to cross the line of sight." aria-expanded="false">Desired Zero</button></h2>
               <div class="stepper">
-                <button type="button" id="zero-dec" aria-label="Shorter zero">−</button>
+                <button type="button" id="zero-dec" aria-label="Shorter desired zero">−</button>
                 <label class="dist-readout">
-                  <input id="zero" inputmode="decimal" autocomplete="off" aria-label="Zero distance">
+                  <input id="zero" inputmode="decimal" autocomplete="off" aria-label="Desired Zero">
                   <span id="zero-unit"></span>
                 </label>
-                <button type="button" id="zero-inc" aria-label="Longer zero">+</button>
+                <button type="button" id="zero-inc" aria-label="Longer desired zero">+</button>
               </div>
             </div>
-            <input id="zero-slider" class="slider" type="range" aria-label="Zero distance slider">
+            <input id="zero-slider" class="slider" type="range" aria-label="Desired Zero slider">
+          </div>
+          <div class="play-control" data-mark="paper">
+            <div class="play-line">
+              <h2><button type="button" class="tip-title" data-tip="Distance to the paper target you are using to zero." aria-expanded="false">Zero Target Distance</button></h2>
+              <p id="paper-offset" class="paper-offset"></p>
+            </div>
+            <div class="play-line">
+              <div class="stepper">
+                <button type="button" id="paper-dec" aria-label="Shorter zero target distance">−</button>
+                <label class="dist-readout">
+                  <input id="paper" inputmode="decimal" autocomplete="off" aria-label="Zero Target Distance">
+                  <span id="paper-unit"></span>
+                </label>
+                <button type="button" id="paper-inc" aria-label="Longer zero target distance">+</button>
+              </div>
+            </div>
+            <input id="paper-slider" class="slider" type="range" aria-label="Zero Target Distance slider">
           </div>
           <div class="play-control" data-mark="close">
             <div class="play-line">
