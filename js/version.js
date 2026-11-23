@@ -1,2 +1,2 @@
 /** The only copy of the app version. Bump it before any commit that changes behavior. */
-export const VERSION = "0.12.0";
+export const VERSION = "0.13.0";

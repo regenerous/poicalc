@@ -13,13 +13,13 @@ const $ = (id) => document.getElementById(id);
 const DEFAULTS = {
   units: "imperial",
   theme: "dark",
-  presetId: "fed",
+  presetId: "tula223",
   customId: null,
   customAmmo: [],
   barrelIn: 16,
-  caliber: "5.56 NATO",
+  caliber: ".223 Rem",
   weightGr: 55,
-  bc: 0.246,
+  bc: 0.255,
   speedOverrideFps: null,
   sightIn: 1.93,
   zeroYd: 50,
@@ -107,8 +107,31 @@ function sanitize(data) {
     next.caliber = custom.caliber;
     next.weightGr = custom.weightGr;
     next.bc = custom.bcG1;
+  } else if (stillOldDefaultLoad(data)) {
+    const tula = presetById("tula223");
+    next.presetId = tula.id;
+    next.caliber = tula.caliber;
+    next.weightGr = tula.weightGr;
+    next.bc = tula.bcG1;
+    next.speedOverrideFps = null;
   }
   return next;
+}
+
+function stillOldDefaultLoad(data) {
+  if (!data || typeof data !== "object") return false;
+  if (typeof data.customId === "string" && data.customId) return false;
+  if (data.presetId !== "fed") return false;
+  if (typeof data.caliber === "string" && data.caliber.trim() && data.caliber.trim() !== "5.56 NATO") return false;
+  if (!sameSavedNumber(data.weightGr, 55)) return false;
+  if (!sameSavedNumber(data.bc, 0.246)) return false;
+  return data.speedOverrideFps == null || data.speedOverrideFps === "";
+}
+
+function sameSavedNumber(value, expected) {
+  if (value == null || value === "") return true;
+  const n = Number(value);
+  return Number.isFinite(n) && Math.abs(n - expected) < 0.0005;
 }
 
 function clampNum(value, min, max, fallback) {
@@ -906,6 +929,9 @@ function renderPicker() {
   face.setAttribute("aria-expanded", showMenu ? "true" : "false");
 }
 
+const CALIBER_ORDER = [".22 lr", "9mm luger", ".223 rem", "5.56 nato", "7.62×39"];
+let ammoOpen = null;
+
 function ammoGroups() {
   const order = [];
   const map = new Map();
@@ -919,7 +945,16 @@ function ammoGroups() {
   };
   for (const preset of PRESETS) bucket(preset.caliber).presets.push(preset);
   for (const custom of state.customAmmo) bucket(custom.caliber).customs.push(custom);
-  return order.map((key) => map.get(key));
+  return order
+    .map((key) => map.get(key))
+    .sort((a, b) => {
+      const rank = (label) => {
+        const index = CALIBER_ORDER.indexOf(label.trim().toLowerCase());
+        return index === -1 ? CALIBER_ORDER.length : index;
+      };
+      const bySize = rank(a.label) - rank(b.label);
+      return bySize || a.label.localeCompare(b.label);
+    });
 }
 
 function choiceButton({ name, detail, badge, selected, presetId, customId, label }) {
@@ -949,16 +984,25 @@ function choiceButton({ name, detail, badge, selected, presetId, customId, label
   return button;
 }
 
+function activeCaliberKey() {
+  if (state.customId) {
+    const custom = state.customAmmo.find((item) => item.id === state.customId);
+    if (custom) return custom.caliber.trim().toLowerCase();
+  }
+  return (state.caliber || presetById(state.presetId).caliber).trim().toLowerCase();
+}
+
 function renderAmmo() {
   const root = $("ammo-groups");
-  const open = new Set([...root.querySelectorAll("details[open]")].map((node) => node.dataset.key));
+  if (ammoOpen == null) ammoOpen = new Set([activeCaliberKey()]);
+  else ammoOpen = new Set([...root.querySelectorAll("details[open]")].map((node) => node.dataset.key));
   root.replaceChildren();
   for (const group of ammoGroups()) {
     const key = group.label.trim().toLowerCase();
     const block = document.createElement("details");
     block.className = "caliber-group";
     block.dataset.key = key;
-    if (open.has(key)) block.open = true;
+    if (ammoOpen.has(key)) block.open = true;
     const heading = document.createElement("summary");
     heading.textContent = group.label;
     const list = document.createElement("div");
