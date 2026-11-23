@@ -1154,10 +1154,10 @@ function render() {
   $("chart-min").hidden = !ends;
   $("chart-max").hidden = !ends;
   $("chart-min").textContent = ends
-    ? `${formatSignedDrop(ends.min.inches)} at ${formatDistanceNumber(ends.min.yd)} ${unit}`
+    ? `Min ${formatSignedDrop(ends.min.inches)} at ${formatDistanceNumber(ends.min.yd)} ${unit}`
     : "";
   $("chart-max").textContent = ends
-    ? `${formatSignedDrop(ends.max.inches)} at ${formatDistanceNumber(ends.max.yd)} ${unit}`
+    ? `Max ${formatSignedDrop(ends.max.inches)} at ${formatDistanceNumber(ends.max.yd)} ${unit}`
     : "";
   $("close-unit").textContent = unit;
   $("far-unit").textContent = unit;
