@@ -1,5 +1,5 @@
 import { solvePoi } from "./ballistics.js";
-import { FPS_PER_INCH, PRESETS, findBox, muzzleFps, presetById } from "./presets.js";
+import { FPS_PER_INCH, PRESETS, catalogLines, muzzleFps, presetById } from "./presets.js";
 import { VERSION } from "./version.js";
 
 const KEY = "poicalc.setup";
@@ -28,6 +28,17 @@ const DEFAULTS = {
 
 let state = loadState();
 let adding = false;
+let picker = { hold: false, menuOpen: false, brand: "", weight: "" };
+
+const LINE_COLOR = {
+  Winchester: "#8d6a32",
+  Federal: "#1e4d32",
+  "American Eagle": "#1d3e66",
+  Remington: "#6d2e28",
+  CCI: "#243646",
+  Tula: "#3e4a28",
+  Barnaul: "#4a3824",
+};
 
 function loadState() {
   try {
@@ -51,9 +62,13 @@ function sanitizeCustom(list) {
     if (!id.startsWith("c-") || !caliber || seen.has(id)) continue;
     const weightGr = clampNum(item.weightGr, 15, 500, null);
     const speedFps = clampNum(item.speedFps, 300, 4500, null);
-    const bcG1 = clampNum(item.bcG1, 0.05, 1.5, null);
+    let bcG1 = null;
+    if (!(item.bcG1 == null || item.bcG1 === "")) {
+      bcG1 = clampNum(item.bcG1, 0.05, 1.5, null);
+      if (bcG1 == null) continue;
+    }
     const barrelIn = clampNum(item.barrelIn, 2, 32, DEFAULTS.barrelIn);
-    if (weightGr == null || speedFps == null || bcG1 == null) continue;
+    if (weightGr == null || speedFps == null) continue;
     seen.add(id);
     out.push({ id, caliber, weightGr, speedFps, bcG1, barrelIn });
   }
@@ -504,6 +519,179 @@ function detailText(grains, fps, model) {
   return model ? `${model} · ${load}` : load;
 }
 
+function xmlText(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function publishedIds(preset) {
+  const models = preset.models || [];
+  const upcs = preset.upcs || [];
+  const rows = [];
+  if (models[0] || upcs[0]) rows.push({ model: models[0] || "", upc: upcs[0] || "" });
+  for (let i = 1; i < Math.max(models.length, upcs.length); i += 1) {
+    if (upcs[i]) rows.push({ model: models[i] || "", upc: upcs[i] });
+  }
+  return rows.length ? rows : [{ model: "", upc: "" }];
+}
+
+function loadsFor(brand, weight) {
+  const grains = Number(weight);
+  if (!brand || !Number.isFinite(grains)) return [];
+  return PRESETS.filter((preset) => preset.line === brand && preset.weightGr === grains);
+}
+
+function boxSvg(preset) {
+  const color = LINE_COLOR[preset.line] || "#3a3632";
+  const label = xmlText(preset.line);
+  const caliber = xmlText(preset.caliber);
+  const weight = xmlText(`${preset.weightGr} gr`);
+  return `<svg viewBox="0 0 160 104" role="img" aria-label="${label} ${caliber}">
+    <rect x="2" y="6" width="156" height="92" rx="8" fill="${color}"/>
+    <rect x="2" y="6" width="16" height="92" rx="8" fill="rgba(255,255,255,0.16)"/>
+    <rect x="14" y="6" width="8" height="92" fill="${color}"/>
+    <text x="30" y="34" fill="#fffdf8" font-size="14" font-family="sans-serif" font-weight="700">${label}</text>
+    <text x="30" y="54" fill="#fffdf8" font-size="12" font-family="sans-serif">${caliber}</text>
+    <text x="30" y="76" fill="#f3eadc" font-size="12" font-family="sans-serif">${weight}</text>
+  </svg>`;
+}
+
+function customSvg(caliber) {
+  const name = xmlText(caliber || "Custom");
+  return `<svg viewBox="0 0 160 104" role="img" aria-label="Custom load">
+    <rect x="2" y="6" width="156" height="92" rx="8" fill="#3a3632"/>
+    <rect x="2" y="6" width="156" height="92" rx="8" fill="none" stroke="#c2bbb2" stroke-dasharray="5 4"/>
+    <text x="18" y="42" fill="#fffdf8" font-size="14" font-family="sans-serif" font-weight="700">Custom</text>
+    <text x="18" y="64" fill="#f3eadc" font-size="12" font-family="sans-serif">${name}</text>
+  </svg>`;
+}
+
+function emptySvg() {
+  return `<svg viewBox="0 0 160 104" role="img" aria-label="No box chosen">
+    <rect x="2" y="6" width="156" height="92" rx="8" fill="none" stroke="#8f887f" stroke-dasharray="5 4"/>
+  </svg>`;
+}
+
+function idLine(model, upc) {
+  const line = document.createElement("span");
+  line.className = "load-id-line";
+  const modelEl = document.createElement("span");
+  modelEl.className = "load-model";
+  modelEl.textContent = model;
+  const label = document.createElement("span");
+  label.className = "load-upc-label";
+  label.textContent = "UPC";
+  const upcEl = document.createElement("span");
+  upcEl.className = "load-upc";
+  upcEl.textContent = upc || "";
+  line.append(modelEl, label, upcEl);
+  return line;
+}
+
+function faceCopy(preset) {
+  const ids = document.createElement("span");
+  ids.className = "load-ids";
+  for (const row of publishedIds(preset)) {
+    const model = row.model ? `${row.model} · ${preset.caliber}` : preset.caliber;
+    ids.append(idLine(model, row.upc));
+  }
+  return ids;
+}
+
+function paintChoice(parent, preset, custom) {
+  const art = document.createElement("span");
+  art.className = "box-art";
+  if (preset) {
+    art.innerHTML = boxSvg(preset);
+    parent.append(art, faceCopy(preset));
+    return;
+  }
+  if (custom) {
+    art.innerHTML = customSvg(custom.caliber);
+    const ids = document.createElement("span");
+    ids.className = "load-ids";
+    ids.append(idLine("Custom", ""));
+    parent.append(art, ids);
+    return;
+  }
+  art.innerHTML = emptySvg();
+  const note = document.createElement("span");
+  note.className = "load-placeholder";
+  note.textContent = "Choose a box";
+  parent.append(art, note);
+}
+
+function fillSelect(el, options, value) {
+  const sig = `${value}::${options.map((option) => `${option.value}=${option.label}`).join("|")}`;
+  if (el.dataset.sig === sig) return;
+  el.dataset.sig = sig;
+  el.replaceChildren();
+  for (const option of options) {
+    const node = document.createElement("option");
+    node.value = option.value;
+    node.textContent = option.label;
+    el.append(node);
+  }
+  el.value = value;
+}
+
+function renderPicker() {
+  if (!picker.hold) {
+    if (state.customId) {
+      picker.brand = "";
+      picker.weight = "";
+    } else {
+      const current = presetById(state.presetId);
+      picker.brand = current.line;
+      picker.weight = String(current.weightGr);
+    }
+  }
+  fillSelect(
+    $("brand-pick"),
+    [{ value: "", label: "Choose a brand" }, ...catalogLines().map((name) => ({ value: name, label: name }))],
+    picker.brand,
+  );
+  const weights = [...new Set(PRESETS.filter((preset) => preset.line === picker.brand).map((preset) => preset.weightGr))].sort(
+    (a, b) => a - b,
+  );
+  fillSelect(
+    $("weight-pick"),
+    [
+      { value: "", label: "Choose a weight" },
+      ...weights.map((grains) => ({ value: String(grains), label: `${formatWeight(grains)} ${weightUnit()}` })),
+    ],
+    picker.weight,
+  );
+  $("weight-pick").disabled = !picker.brand;
+  const matches = loadsFor(picker.brand, picker.weight);
+  $("load-pick").disabled = matches.length === 0;
+  const selected =
+    !state.customId && !picker.hold && matches.some((preset) => preset.id === state.presetId)
+      ? presetById(state.presetId)
+      : null;
+  const custom = state.customId && !picker.hold ? activeCustom() : null;
+  const face = $("load-pick");
+  face.replaceChildren();
+  paintChoice(face, selected, custom);
+  const menu = $("load-menu");
+  menu.replaceChildren();
+  for (const preset of matches) {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = preset.id === selected?.id ? "load-option is-selected" : "load-option";
+    option.role = "option";
+    option.dataset.preset = preset.id;
+    option.setAttribute("aria-selected", preset.id === selected?.id ? "true" : "false");
+    paintChoice(option, preset, null);
+    menu.append(option);
+  }
+  const showMenu = picker.menuOpen && matches.length > 0;
+  menu.hidden = !showMenu;
+  face.setAttribute("aria-expanded", showMenu ? "true" : "false");
+}
+
 function ammoGroups() {
   const order = [];
   const map = new Map();
@@ -549,11 +737,15 @@ function choiceButton({ name, detail, badge, selected, presetId, customId, label
 
 function renderAmmo() {
   const root = $("ammo-groups");
+  const open = new Set([...root.querySelectorAll("details[open]")].map((node) => node.dataset.key));
   root.replaceChildren();
   for (const group of ammoGroups()) {
-    const block = document.createElement("section");
+    const key = group.label.trim().toLowerCase();
+    const block = document.createElement("details");
     block.className = "caliber-group";
-    const heading = document.createElement("h3");
+    block.dataset.key = key;
+    if (open.has(key)) block.open = true;
+    const heading = document.createElement("summary");
     heading.textContent = group.label;
     const list = document.createElement("div");
     list.className = "caliber-loads";
@@ -612,16 +804,17 @@ function readAdd() {
   const caliber = $("add-caliber").value.trim();
   const weightRaw = Number(String($("add-weight").value).replace(/,/g, "").trim());
   const speedRaw = Number(String($("add-speed").value).replace(/,/g, "").trim());
-  const bc = Number(String($("add-bc").value).replace(/,/g, "").trim());
+  const bcText = String($("add-bc").value).replace(/,/g, "").trim();
   return {
     caliber,
     weightGr: metric() ? weightRaw / GRAIN : weightRaw,
     speedFps: metric() ? speedRaw / 0.3048 : speedRaw,
-    bc,
+    bc: bcText === "" ? null : Number(bcText),
   };
 }
 
 function addValid(value) {
+  const bcOk = value.bc == null || (Number.isFinite(value.bc) && value.bc >= 0.05 && value.bc <= 1.5);
   return (
     value.caliber.length > 0 &&
     value.caliber.length <= 40 &&
@@ -629,8 +822,7 @@ function addValid(value) {
     value.weightGr <= 500 &&
     value.speedFps >= 300 &&
     value.speedFps <= 4500 &&
-    value.bc >= 0.05 &&
-    value.bc <= 1.5
+    bcOk
   );
 }
 
@@ -667,17 +859,6 @@ function render() {
   const unit = distanceUnit();
 
   applyTheme();
-  if (poi) {
-    $("close-where").textContent = `Close · ${aimWord(closeIn)}`;
-    $("close-drop").textContent = `${formatSignedDrop(closeIn)} · ${formatDistanceNumber(state.closeYd)} ${unit}`;
-    $("far-where").textContent = `Far · ${aimWord(farIn)}`;
-    $("far-drop").textContent = `${formatSignedDrop(farIn)} · ${formatDistanceNumber(state.farYd)} ${unit}`;
-  } else {
-    $("close-where").textContent = "Close";
-    $("close-drop").textContent = "Type a G1 BC";
-    $("far-where").textContent = "Far";
-    $("far-drop").textContent = "Type a G1 BC";
-  }
   $("unit-imperial").setAttribute("aria-checked", metric() ? "false" : "true");
   $("unit-metric").setAttribute("aria-checked", metric() ? "true" : "false");
   $("unit-hint").textContent = metric() ? "mm, m, m/s, g" : "in, yd, ft/s, gr";
@@ -723,7 +904,7 @@ function render() {
   $("add-panel").hidden = !adding;
   const full = state.customAmmo.length >= CUSTOM_LIMIT;
   $("add-ammo").disabled = adding || full;
-  $("add-ammo").textContent = full ? "40 loads saved" : "Add ammo";
+  $("add-ammo").textContent = full ? "40 loads saved" : "Add a load";
   $("add-save").disabled = !addValid(readAdd());
 
   setIfIdle("caliber", state.caliber);
@@ -749,6 +930,7 @@ function render() {
     path.setAttribute("aria-label", "Type a G1 BC to plot the path.");
     $("target-caption").textContent = "This load has no published G1 BC. Type one to plot the path.";
   }
+  renderPicker();
   renderAmmo();
 }
 
@@ -784,6 +966,8 @@ function setTheme(theme) {
 function applyPreset(id) {
   const preset = presetById(id);
   adding = false;
+  picker.hold = false;
+  picker.menuOpen = false;
   state.customId = null;
   state.presetId = preset.id;
   state.caliber = preset.caliber;
@@ -798,6 +982,8 @@ function applyCustom(id) {
   const custom = state.customAmmo.find((item) => item.id === id);
   if (!custom) return;
   adding = false;
+  picker.hold = false;
+  picker.menuOpen = false;
   state.customId = custom.id;
   state.caliber = custom.caliber;
   state.weightGr = custom.weightGr;
@@ -892,10 +1078,45 @@ function wire() {
   $("theme-dark").addEventListener("click", () => setTheme("dark"));
   $("theme-light").addEventListener("click", () => setTheme("light"));
   $("ammo-groups").addEventListener("click", (event) => {
-    const button = event.target.closest("button");
-    if (!button) return;
+    const button = event.target.closest("[data-preset], [data-custom]");
+    if (!button || !$("ammo-groups").contains(button)) return;
     if (button.dataset.custom) applyCustom(button.dataset.custom);
-    else if (button.dataset.preset) applyPreset(button.dataset.preset);
+    else applyPreset(button.dataset.preset);
+  });
+  $("brand-pick").addEventListener("change", () => {
+    picker.hold = true;
+    picker.brand = $("brand-pick").value;
+    picker.weight = "";
+    picker.menuOpen = false;
+    render();
+  });
+  $("weight-pick").addEventListener("change", () => {
+    picker.hold = true;
+    picker.weight = $("weight-pick").value;
+    const matches = loadsFor(picker.brand, picker.weight);
+    if (matches.length === 1) {
+      applyPreset(matches[0].id);
+      return;
+    }
+    picker.menuOpen = matches.length > 1;
+    render();
+  });
+  $("load-pick").addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (!loadsFor(picker.brand, picker.weight).length) return;
+    picker.menuOpen = !picker.menuOpen;
+    render();
+  });
+  $("load-menu").addEventListener("click", (event) => {
+    const option = event.target.closest("[data-preset]");
+    if (!option) return;
+    applyPreset(option.dataset.preset);
+  });
+  document.addEventListener("click", (event) => {
+    if (!picker.menuOpen) return;
+    if (event.target.closest("#load-pick") || event.target.closest("#load-menu")) return;
+    picker.menuOpen = false;
+    render();
   });
   $("add-ammo").addEventListener("click", () => {
     if ($("add-ammo").disabled) return;
@@ -1045,21 +1266,6 @@ function wire() {
     state.speedOverrideFps = null;
     save();
     render();
-  });
-  $("box-search").addEventListener("click", () => {
-    const note = $("box-result");
-    const hit = findBox($("box-brand").value, $("box-model").value);
-    note.hidden = false;
-    if (!hit) {
-      note.textContent = "No match. Type the caliber, weight, speed, and G1 BC.";
-      return;
-    }
-    const model = hit.models?.[0] || "";
-    note.textContent =
-      hit.bcG1 == null
-        ? `${hit.brand} ${model}. Speed is filled in. Type a G1 BC.`
-        : `${hit.brand} ${model}.`;
-    applyPreset(hit.id);
   });
 }
 

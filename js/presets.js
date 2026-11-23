@@ -15,8 +15,11 @@ export const PRESETS = [
   {
     id: "fed",
     brand: "Federal",
+    line: "Federal",
     brandAliases: ["Federal", "American Eagle"],
     models: ["AE193", "AE193C"],
+    // gtins on the Federal product pages for 11-AE193 and 11-AE193C.
+    upcs: ["604544703917", "604544705829"],
     short: "5.56",
     caliber: "5.56 NATO",
     weightGr: 55,
@@ -29,8 +32,10 @@ export const PRESETS = [
   {
     id: "q3131",
     brand: "Winchester White Box",
+    line: "Winchester",
     brandAliases: ["Winchester", "Winchester White Box", "USA"],
     models: ["Q3131"],
+    upcs: [],
     short: "5.56",
     caliber: "5.56 NATO",
     weightGr: 55,
@@ -45,8 +50,10 @@ export const PRESETS = [
   {
     id: "wwb",
     brand: "Winchester White Box",
+    line: "Winchester",
     brandAliases: ["Winchester", "Winchester White Box", "USA"],
     models: ["USA223R1"],
+    upcs: [],
     short: ".223",
     caliber: ".223 Rem",
     weightGr: 55,
@@ -61,8 +68,10 @@ export const PRESETS = [
   {
     id: "tula223",
     brand: "Tula",
+    line: "Tula",
     brandAliases: ["Tula", "Tulammo"],
     models: ["TA223550"],
+    upcs: [],
     short: ".223",
     caliber: ".223 Rem",
     weightGr: 55,
@@ -78,8 +87,10 @@ export const PRESETS = [
   {
     id: "barnaul223",
     brand: "Barnaul",
+    line: "Barnaul",
     brandAliases: ["Barnaul"],
     models: ["BRN223REMFMJBT55"],
+    upcs: [],
     short: ".223",
     caliber: ".223 Rem",
     weightGr: 55,
@@ -93,8 +104,11 @@ export const PRESETS = [
   {
     id: "ae223",
     brand: "Federal",
+    line: "Federal",
     brandAliases: ["Federal", "American Eagle"],
     models: ["AE223", "AE223C"],
+    // gtins on the Federal product pages for 11-AE223 and 11-AE223C.
+    upcs: ["029465084820", "604544707823"],
     short: ".223",
     caliber: ".223 Rem",
     weightGr: 55,
@@ -108,8 +122,11 @@ export const PRESETS = [
   {
     id: "rem223",
     brand: "Remington",
+    line: "Remington",
     brandAliases: ["Remington", "UMC"],
     models: ["23683", "L223R3"],
+    // gtin on remington.com part 23683. L223R3 has no separate UPC on that page.
+    upcs: ["047700398105"],
     short: ".223",
     caliber: ".223 Rem",
     weightGr: 55,
@@ -123,8 +140,11 @@ export const PRESETS = [
   {
     id: "ae",
     brand: "American Eagle",
+    line: "American Eagle",
     brandAliases: ["American Eagle", "Federal"],
     models: ["AE9DP"],
+    // gtin on federalpremium.com part 11-AE9DP.
+    upcs: ["029465088224"],
     short: "9mm",
     caliber: "9mm Luger",
     weightGr: 115,
@@ -139,8 +159,11 @@ export const PRESETS = [
   {
     id: "blazer9",
     brand: "CCI Blazer",
+    line: "CCI",
     brandAliases: ["CCI", "CCI Blazer", "Blazer"],
     models: ["5200"],
+    // gtin on cci-ammunition.com part 6-5200.
+    upcs: ["076683052001"],
     short: "9mm",
     caliber: "9mm Luger",
     weightGr: 115,
@@ -154,8 +177,11 @@ export const PRESETS = [
   {
     id: "ae9ap",
     brand: "Federal",
+    line: "Federal",
     brandAliases: ["Federal", "American Eagle"],
     models: ["AE9AP"],
+    // gtin on federalpremium.com part 11-AE9AP.
+    upcs: ["029465088569"],
     short: "9mm",
     caliber: "9mm Luger",
     weightGr: 124,
@@ -169,8 +195,11 @@ export const PRESETS = [
   {
     id: "ae9fp",
     brand: "Federal",
+    line: "Federal",
     brandAliases: ["Federal", "American Eagle"],
     models: ["AE9FP"],
+    // gtin on federalpremium.com part 11-AE9FP.
+    upcs: ["029465089207"],
     short: "9mm",
     caliber: "9mm Luger",
     weightGr: 147,
@@ -184,8 +213,11 @@ export const PRESETS = [
   {
     id: "rem9",
     brand: "Remington",
+    line: "Remington",
     brandAliases: ["Remington", "UMC"],
-    models: ["L9MM3", "23728"],
+    models: ["23728", "L9MM3"],
+    // gtin on remington.com part 23728. L9MM3 has no separate UPC on that page.
+    upcs: ["047700069807"],
     short: "9mm",
     caliber: "9mm Luger",
     weightGr: 115,
@@ -199,8 +231,10 @@ export const PRESETS = [
   {
     id: "wwb9",
     brand: "Winchester White Box",
+    line: "Winchester",
     brandAliases: ["Winchester", "Winchester White Box", "USA"],
     models: ["USA9MMVP"],
+    upcs: [],
     short: "9mm",
     caliber: "9mm Luger",
     weightGr: 115,
@@ -214,8 +248,11 @@ export const PRESETS = [
   {
     id: "cci",
     brand: "CCI Blazer",
+    line: "CCI",
     brandAliases: ["CCI", "CCI Blazer", "Blazer"],
     models: ["21", "0021"],
+    // gtin on cci-ammunition.com part 6-21.
+    upcs: ["076683000217"],
     short: ".22",
     caliber: ".22 LR",
     weightGr: 40,
@@ -229,8 +266,11 @@ export const PRESETS = [
   {
     id: "minimag",
     brand: "CCI Mini-Mag",
+    line: "CCI",
     brandAliases: ["CCI", "CCI Mini-Mag", "Mini-Mag"],
     models: ["30", "0030"],
+    // gtin on cci-ammunition.com part 6-30.
+    upcs: ["076683000309"],
     short: ".22",
     caliber: ".22 LR",
     weightGr: 40,
@@ -244,8 +284,10 @@ export const PRESETS = [
   {
     id: "tula",
     brand: "Tula",
+    line: "Tula",
     brandAliases: ["Tula", "Tulammo"],
     models: [],
+    upcs: [],
     short: "7.62x39",
     caliber: "7.62×39",
     weightGr: 122,
@@ -258,8 +300,21 @@ export const PRESETS = [
   },
 ];
 
+const LINE_ORDER = ["Winchester", "Federal", "American Eagle", "Remington", "CCI", "Tula", "Barnaul"];
+
 export function presetById(id) {
   return PRESETS.find((preset) => preset.id === id) ?? PRESETS[0];
+}
+
+export function catalogLines() {
+  const found = [];
+  for (const preset of PRESETS) {
+    if (preset.line && !found.includes(preset.line)) found.push(preset.line);
+  }
+  return [
+    ...LINE_ORDER.filter((name) => found.includes(name)),
+    ...found.filter((name) => !LINE_ORDER.includes(name)),
+  ];
 }
 
 function boxCode(value) {

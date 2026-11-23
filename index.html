@@ -31,29 +31,42 @@
   <body>
     <div class="app">
       <header class="top">
-        <div class="readout">
-          <h1>POI</h1>
-          <p class="pair">
-            <span id="close-where" class="where"></span>
-            <span id="close-drop" class="drop" aria-live="polite"></span>
-          </p>
-          <p class="pair">
-            <span id="far-where" class="where"></span>
-            <span id="far-drop" class="drop far-drop" aria-live="polite"></span>
-          </p>
-        </div>
-        <div class="top-side">
-          <div class="units" role="radiogroup" aria-label="Appearance">
-            <button type="button" id="theme-dark" role="radio" aria-checked="true">Dark</button>
-            <button type="button" id="theme-light" role="radio" aria-checked="false">Light</button>
-          </div>
+        <div class="top-units">
           <div class="units" role="radiogroup" aria-label="Units">
             <button type="button" id="unit-imperial" role="radio" aria-checked="true">Imperial</button>
             <button type="button" id="unit-metric" role="radio" aria-checked="false">Metric</button>
           </div>
           <p id="unit-hint" class="hint"></p>
         </div>
+        <div class="units theme-toggle" role="radiogroup" aria-label="Appearance">
+          <button type="button" id="theme-dark" role="radio" aria-checked="true" aria-label="Dark">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.5 2.5a8.5 8.5 0 1 0 6 14.2A8.8 8.8 0 0 1 15.5 2.5z"/></svg>
+          </button>
+          <button type="button" id="theme-light" role="radio" aria-checked="false" aria-label="Light">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.4M12 19.1V21.5M2.5 12h2.4M19.1 12h2.4M4.8 4.8l1.7 1.7M17.5 17.5l1.7 1.7M19.2 4.8l-1.7 1.7M6.5 17.5l-1.7 1.7"/></g></svg>
+          </button>
+        </div>
       </header>
+
+      <section class="panel" id="setup-section" aria-labelledby="setup-heading">
+        <h2 id="setup-heading">Barrel and optic</h2>
+        <div class="specs">
+          <label class="spec">
+            <span class="spec-value">
+              <input id="barrel" inputmode="decimal" autocomplete="off" aria-label="Barrel length">
+              <span id="barrel-unit"></span>
+            </span>
+            <button type="button" class="spec-name tip-title" data-tip="Barrel length. Catalog speed shifts 25 feet per second for each inch longer or shorter than that load's reference barrel." aria-expanded="false">Barrel</button>
+          </label>
+          <label class="spec">
+            <span class="spec-value">
+              <input id="sight" inputmode="decimal" autocomplete="off" aria-label="Optic height over bore">
+              <span id="sight-unit"></span>
+            </span>
+            <button type="button" class="spec-name tip-title" data-tip="How high the sight sits above the center of the bore. The bullet has to climb that height to meet the line of sight at the zero." aria-expanded="false">Optic height</button>
+          </label>
+        </div>
+      </section>
 
       <section class="panel" id="distance-panel" aria-label="Zero, close, and far">
         <div class="play">
@@ -122,23 +135,25 @@
       <section class="panel" id="ammo-section" aria-labelledby="ammo-heading">
         <div class="panel-head">
           <h2 id="ammo-heading">Ammunition</h2>
-          <button type="button" id="add-ammo">Add ammo</button>
+          <button type="button" id="add-ammo">Add a load</button>
         </div>
-        <div class="box-search">
-          <div class="fields">
-            <label class="field">
-              <button type="button" class="tip-title" data-tip="The maker printed on the box. Search matches it with the model number." aria-expanded="false">Brand on the box</button>
-              <input id="box-brand" autocomplete="off" autocapitalize="off" spellcheck="false">
-            </label>
-            <label class="field">
-              <button type="button" class="tip-title" data-tip="The model or part number printed on the box. A match fills speed, and G1 BC when the maker published one." aria-expanded="false">Model number</button>
-              <input id="box-model" autocomplete="off" autocapitalize="off" spellcheck="false">
-            </label>
+        <div class="picker">
+          <label class="field">
+            <span>Brand</span>
+            <select id="brand-pick"></select>
+          </label>
+          <label class="field">
+            <span>Bullet weight</span>
+            <select id="weight-pick"></select>
+          </label>
+          <div class="field">
+            <span>Box</span>
+            <div class="load-select">
+              <button type="button" id="load-pick" aria-haspopup="listbox" aria-expanded="false" aria-controls="load-menu"></button>
+              <div id="load-menu" role="listbox" hidden></div>
+            </div>
           </div>
-          <button type="button" id="box-search">Search the box</button>
-          <p id="box-result" class="rule" hidden></p>
         </div>
-        <div id="ammo-groups"></div>
 
         <div id="edit-fields" class="load-fields">
           <div class="fields">
@@ -181,7 +196,7 @@
               <input id="add-bc" inputmode="decimal" autocomplete="off" aria-label="New G1 ballistic coefficient">
             </label>
           </div>
-          <p class="add-hint">Caliber, weight, speed, and a G1 BC.</p>
+          <p class="add-hint">Type a caliber, weight, and speed. Leave G1 BC empty if the box does not list one.</p>
           <div class="add-actions">
             <button type="button" id="add-cancel">Cancel</button>
             <button type="button" id="add-save" disabled>Save ammo</button>
@@ -190,26 +205,7 @@
 
         <p id="rule" class="rule"></p>
         <button type="button" id="use-catalog" hidden>Use catalog speed</button>
-      </section>
-
-      <section class="panel" id="setup-section" aria-labelledby="setup-heading">
-        <h2 id="setup-heading">Barrel and optic</h2>
-        <div class="specs">
-          <label class="spec">
-            <span class="spec-value">
-              <input id="barrel" inputmode="decimal" autocomplete="off" aria-label="Barrel length">
-              <span id="barrel-unit"></span>
-            </span>
-            <button type="button" class="spec-name tip-title" data-tip="Barrel length. Catalog speed shifts 25 feet per second for each inch longer or shorter than that load's reference barrel." aria-expanded="false">Barrel</button>
-          </label>
-          <label class="spec">
-            <span class="spec-value">
-              <input id="sight" inputmode="decimal" autocomplete="off" aria-label="Optic height over bore">
-              <span id="sight-unit"></span>
-            </span>
-            <button type="button" class="spec-name tip-title" data-tip="How high the sight sits above the center of the bore. The bullet has to climb that height to meet the line of sight at the zero." aria-expanded="false">Optic height</button>
-          </label>
-        </div>
+        <div id="ammo-groups"></div>
       </section>
 
       <p class="footer"><span id="version"></span></p>
