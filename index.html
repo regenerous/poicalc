@@ -14,6 +14,9 @@
         document.documentElement.setAttribute("data-theme", theme);
         var meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute("content", theme === "light" ? "#e6e2da" : "#0e0d0c");
+        var standalone = window.navigator.standalone === true
+          || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+        if (standalone) document.documentElement.classList.add("standalone");
       })();
     </script>
     <meta name="apple-mobile-web-app-capable" content="yes">

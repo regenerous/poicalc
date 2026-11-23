@@ -69,10 +69,22 @@ input {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: calc(4px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
-  padding-left: calc(12px + env(safe-area-inset-left));
-  padding-right: calc(12px + env(safe-area-inset-right));
+  padding: 4px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  padding-left: calc(12px + env(safe-area-inset-left, 0px));
+  padding-right: calc(12px + env(safe-area-inset-right, 0px));
   background: var(--bg);
+}
+
+/* Home Screen only. A Safari tab already sits below the status bar, so the
+   same inset there would open a large empty gap. */
+html.standalone .app {
+  padding-top: calc(4px + env(safe-area-inset-top, 0px));
+}
+
+@media (display-mode: standalone) {
+  .app {
+    padding-top: calc(4px + env(safe-area-inset-top, 0px));
+  }
 }
 
 .mast {
