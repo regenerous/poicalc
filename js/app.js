@@ -26,6 +26,7 @@ const DEFAULTS = {
   paperYd: 50,
   closeYd: 5,
   farYd: 100,
+  plotMaxYd: null,
 };
 
 let state = loadState();
@@ -97,6 +98,10 @@ function sanitize(data) {
   }
   next.closeYd = close;
   next.farYd = far;
+  next.plotMaxYd =
+    data.plotMaxYd == null || data.plotMaxYd === ""
+      ? null
+      : clampNum(data.plotMaxYd, 5, MAX_YD, null);
   next.weightGr = clampNum(data.weightGr, 15, 500, DEFAULTS.weightGr);
   next.bc = data.bc == null || data.bc === "" ? null : clampNum(data.bc, 0.05, 1.5, null);
   if (typeof data.caliber === "string" && data.caliber.trim()) next.caliber = data.caliber.slice(0, 40);
@@ -438,9 +443,19 @@ function drawTarget(closeIn, farIn) {
   $("target-caption").textContent = `Center is the aim point. Outer ring is ${ring.label}.`;
 }
 
+let plotAutoReach = 100;
+
+function plotReach(poi) {
+  return Math.max(poi ? poi.reachYd : 0, state.farYd, state.closeYd, 25);
+}
+
+function plotXMax(poi) {
+  if (state.plotMaxYd == null) return plotReach(poi) * 1.06;
+  return state.plotMaxYd;
+}
+
 function extremaInRange(poi) {
-  const reach = Math.max(poi.reachYd, state.farYd, state.closeYd, 25);
-  const xMax = reach * 1.06;
+  const xMax = plotXMax(poi);
   const shown = poi.samples.filter((point) => point.yd <= xMax);
   const inRange = shown.length ? shown : poi.samples;
   let low = inRange[0];
@@ -460,8 +475,8 @@ function drawPath(poi) {
   const svg = $("path");
   const width = 356;
   const height = 156;
-  const reach = Math.max(poi.reachYd, state.farYd, state.closeYd, 25);
-  const xMax = reach * 1.06;
+  const xMax = plotXMax(poi);
+  const onAxis = (yd) => yd <= xMax + 0.05;
   const xOfYard = (yd) => 12 + (yd / xMax) * (width - 24);
   const marksClose =
     poi.climbYd != null && poi.fallYd != null && Math.abs(xOfYard(poi.climbYd) - xOfYard(poi.fallYd)) < 108;
@@ -477,8 +492,15 @@ function drawPath(poi) {
   }
   const closeIn = inchesAt(poi.samples, state.closeYd);
   const farIn = inchesAt(poi.samples, state.farYd);
-  yMin = Math.min(yMin, closeIn, farIn, -state.sightIn);
-  yMax = Math.max(yMax, closeIn, farIn);
+  yMin = Math.min(yMin, -state.sightIn);
+  if (onAxis(state.closeYd)) {
+    yMin = Math.min(yMin, closeIn);
+    yMax = Math.max(yMax, closeIn);
+  }
+  if (onAxis(state.farYd)) {
+    yMin = Math.min(yMin, farIn);
+    yMax = Math.max(yMax, farIn);
+  }
   const span = Math.max(6, (yMax - yMin) * 1.35);
   const mid = (yMax + yMin) / 2;
   yMin = mid - span / 2;
@@ -499,7 +521,7 @@ function drawPath(poi) {
   const marks = [
     poi.climbYd == null ? null : { kind: "climb", yd: poi.climbYd, verb: "climb" },
     poi.fallYd == null ? null : { kind: "fall", yd: poi.fallYd, verb: "fall" },
-  ].filter(Boolean);
+  ].filter((mark) => mark && onAxis(mark.yd));
   const placed = marks.map((mark) => {
     const nearImpact =
       Math.hypot(xOf(mark.yd) - closeX, yOf(0) - closeY) < 10 ||
@@ -518,6 +540,7 @@ function drawPath(poi) {
       { kind: "min", yd: ends.min.yd, inches: ends.min.inches },
       { kind: "max", yd: ends.max.yd, inches: ends.max.inches },
     ]) {
+      if (!onAxis(item.yd)) continue;
       const key = item.yd.toFixed(2);
       if (seen.has(key)) continue;
       seen.add(key);
@@ -533,11 +556,15 @@ function drawPath(poi) {
   }
 
   const marked = [
-    { kind: "close", role: "close", yd: state.closeYd, inches: closeIn, x: closeX, y: closeY, r: 4.5 },
-    { kind: "far", role: "far", yd: state.farYd, inches: farIn, x: farX, y: farY, r: 4.5 },
+    onAxis(state.closeYd)
+      ? { kind: "close", role: "close", yd: state.closeYd, inches: closeIn, x: closeX, y: closeY, r: 4.5 }
+      : null,
+    onAxis(state.farYd)
+      ? { kind: "far", role: "far", yd: state.farYd, inches: farIn, x: farX, y: farY, r: 4.5 }
+      : null,
     ...placed.map((mark) => ({ kind: mark.kind, role: "", yd: mark.yd, inches: 0, x: mark.x, y: mark.y, r: mark.r })),
     ...extrema.map((mark) => ({ kind: mark.kind, role: "", yd: mark.yd, inches: mark.inches, x: mark.x, y: mark.y, r: mark.r })),
-  ];
+  ].filter(Boolean);
   const axisY = height - pad.b;
 
   const unit = distanceUnit();
@@ -700,6 +727,7 @@ function drawPath(poi) {
 
   const rawTicks = [{ yd: 0, x: pad.l, role: "", kind: "zero" }];
   for (const mark of marked) rawTicks.push({ yd: mark.yd, x: mark.x, role: mark.role, kind: mark.kind });
+  if (state.plotMaxYd != null) rawTicks.push({ yd: xMax, x: xOf(xMax), role: "", kind: "end" });
   rawTicks.sort((a, b) => a.x - b.x);
   const ticks = [];
   for (const tick of rawTicks) {
@@ -759,8 +787,8 @@ function drawPath(poi) {
     ${tickLines}
     <circle class="mark-muzzle" cx="${xOf(0).toFixed(1)}" cy="${yOf(-state.sightIn).toFixed(1)}" r="2.5"></circle>
     ${markSvg}
-    <circle class="mark-far" data-mark="far" data-distance="far" cx="${farX.toFixed(1)}" cy="${farY.toFixed(1)}" r="4.5"></circle>
-    <circle class="mark-close" data-mark="close" data-distance="close" cx="${closeX.toFixed(1)}" cy="${closeY.toFixed(1)}" r="4.5"></circle>
+    ${onAxis(state.farYd) ? `<circle class="mark-far" data-mark="far" data-distance="far" cx="${farX.toFixed(1)}" cy="${farY.toFixed(1)}" r="4.5"></circle>` : ""}
+    ${onAxis(state.closeYd) ? `<circle class="mark-close" data-mark="close" data-distance="close" cx="${closeX.toFixed(1)}" cy="${closeY.toFixed(1)}" r="4.5"></circle>` : ""}
     ${leaderSvg}
     ${labelSvg}
     ${aimSvg}
@@ -1215,6 +1243,14 @@ function render() {
   setIfIdle("sight", formatSight(state.sightIn));
   setIfIdle("zero", formatDistanceNumber(state.zeroYd));
   setIfIdle("paper", formatDistanceNumber(state.paperYd));
+  plotAutoReach = poi ? plotReach(poi) : Math.max(state.farYd, state.closeYd, 25);
+  const plotAuto = state.plotMaxYd == null;
+  $("plot-auto").setAttribute("aria-pressed", plotAuto ? "true" : "false");
+  $("plot-unit").textContent = plotAuto ? "" : unit;
+  setIfIdle("plot-max", plotAuto ? "Auto" : formatDistanceNumber(state.plotMaxYd));
+  const plotShown = plotAuto ? null : displayDistance(state.plotMaxYd);
+  $("plot-dec").disabled = plotShown != null && plotShown <= displayDistance(5);
+  $("plot-inc").disabled = plotShown != null && plotShown >= displayDistance(MAX_YD);
 
   if (poi) {
     drawTarget(closeIn, farIn);
@@ -1529,6 +1565,22 @@ function wire() {
   });
   onNumber("close", (n) => (metric() ? n / 0.9144 : n), distanceBounds, assignClose);
   onNumber("far", (n) => (metric() ? n / 0.9144 : n), distanceBounds, assignFar);
+  onNumber("plot-max", (n) => (metric() ? n / 0.9144 : n), () => [5, MAX_YD], (yards) => {
+    state.plotMaxYd = yards;
+  });
+  const stepPlot = (direction) => {
+    const base = state.plotMaxYd == null ? plotAutoReach * 1.06 : state.plotMaxYd;
+    state.plotMaxYd = stepShown(base, direction, 5, MAX_YD);
+    save();
+    render();
+  };
+  $("plot-auto").addEventListener("click", () => {
+    state.plotMaxYd = null;
+    save();
+    render();
+  });
+  $("plot-dec").addEventListener("click", () => stepPlot(-1));
+  $("plot-inc").addEventListener("click", () => stepPlot(1));
   $("zero-dec").addEventListener("click", () => {
     const [min, max] = zeroBounds();
     state.zeroYd = stepShown(state.zeroYd, -1, min, max);

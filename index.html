@@ -177,6 +177,18 @@
         <div class="chart-frame">
           <svg id="path" viewBox="0 0 356 156" role="img"></svg>
         </div>
+        <div class="plot-scale">
+          <span class="plot-scale-name">Plot to</span>
+          <button type="button" id="plot-auto" aria-pressed="true">Auto</button>
+          <div class="stepper">
+            <button type="button" id="plot-dec" aria-label="Shorter plot distance">−</button>
+            <label class="dist-readout">
+              <input id="plot-max" inputmode="decimal" autocomplete="off" aria-label="Maximum plot distance">
+              <span id="plot-unit"></span>
+            </label>
+            <button type="button" id="plot-inc" aria-label="Longer plot distance">+</button>
+          </div>
+        </div>
       </section>
 
       <section class="panel" id="ammo-section" aria-labelledby="ammo-heading">

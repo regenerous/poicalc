@@ -427,6 +427,51 @@ html.standalone .app {
 
 .chart-frame { padding: 0 12px; }
 
+.plot-scale {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 12px 8px;
+}
+
+.plot-scale-name {
+  flex: 0 0 auto;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--secondary);
+}
+
+#plot-auto {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--stroke-strong);
+  border-radius: 8px;
+  background: var(--fill);
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+#plot-auto[aria-pressed="true"] {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+.plot-scale .stepper { margin-left: auto; }
+
+.plot-scale .dist-readout { color: var(--text); }
+
+.plot-scale .stepper > button {
+  width: 40px;
+  height: 40px;
+}
+
 #path {
   width: 100%;
   height: auto;

@@ -34,7 +34,7 @@ The bullseye is the target, seen from the firing point. The center is the aim po
 
 ![Bullseye with the close and far offsets](docs/images/bullseye.png)
 
-The drop plot is the same path from the side. The dashed line is the aim point. Inches are up and down. Yards, or meters, run along the bottom.
+The drop plot is the same path from the side. The dashed line is the aim point. Inches are up and down. Yards, or meters, run along the bottom. Under the plot, Plot to chooses how far that axis runs. Auto keeps the scale the chart already uses, out to the farther of the marked distances. Set a distance and the axis ends there: a shorter one clips the curve and any mark past it, and a longer one only lengthens the axis, because the curve still stops where it was calculated. The control steps by five and follows yards or meters, up to 500 yards or 457 meters.
 
 ![Drop plot with leader lines, axis ticks, and the high and low points](docs/images/plot.png)
 
