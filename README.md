@@ -8,13 +8,13 @@ A fresh visit opens on the Tula steel-case .223 load, with that caliber expanded
 
 ## Barrel, optic, and the zero
 
-Barrel length and optic height are the two things the path needs from the gun.
+Barrel length and optic height over bore are the two things the path needs from the gun.
 
-![Barrel length and optic height](docs/images/barrel-optic.png)
+![Barrel length and optic height over bore](docs/images/barrel-optic.png)
 
 Barrel length is how long the barrel is. Catalog muzzle speed is the maker’s figure for that load’s reference barrel. Each inch longer or shorter shifts that speed by 25 feet per second. A longer barrel leaves faster, so the bullet spends less time falling and the path changes everywhere you read it. If you type a muzzle speed, that typed speed replaces the shift.
 
-Optic height is how high the sight sits above the center of the bore. The bullet has to climb that distance to meet the line of sight at the zero. A higher sight means more climb, so the near misses and the shape of the arc both move.
+Optic height over bore is how high the sight sits above the center of the bore. The bullet has to climb that distance to meet the line of sight at the zero. A higher sight means more climb, so the near misses and the shape of the arc both move.
 
 ![Desired zero, zero target distance, and the hit-paper figure](docs/images/zero.png)
 
