@@ -27,7 +27,7 @@ const DEFAULTS = {
   closeYd: 5,
   farYd: 100,
   plotCustom: false,
-  plotMaxYd: null,
+  plotMaxYd: 100,
 };
 
 let state = loadState();
@@ -99,12 +99,13 @@ function sanitize(data) {
   }
   next.closeYd = close;
   next.farYd = far;
-  next.plotMaxYd =
+  const savedPlotMax =
     data.plotMaxYd == null || data.plotMaxYd === ""
       ? null
       : clampNum(data.plotMaxYd, 5, MAX_YD, null);
   if (data.plotCustom === true || data.plotCustom === false) next.plotCustom = data.plotCustom;
-  else next.plotCustom = next.plotMaxYd != null;
+  else next.plotCustom = savedPlotMax != null;
+  next.plotMaxYd = savedPlotMax == null ? 100 : savedPlotMax;
   next.weightGr = clampNum(data.weightGr, 15, 500, DEFAULTS.weightGr);
   next.bc = data.bc == null || data.bc === "" ? null : clampNum(data.bc, 0.05, 1.5, null);
   if (typeof data.caliber === "string" && data.caliber.trim()) next.caliber = data.caliber.slice(0, 40);
@@ -1584,6 +1585,7 @@ function wire() {
   $("plot-custom").addEventListener("click", () => {
     if (state.plotCustom) return;
     state.plotCustom = true;
+    if (state.plotMaxYd == null) state.plotMaxYd = 100;
     save();
     render();
   });

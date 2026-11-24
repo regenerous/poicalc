@@ -428,15 +428,14 @@ html.standalone .app {
 .chart-frame { padding: 0 12px; }
 
 .plot-scale {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
   padding: 4px 12px 2px;
 }
 
 .plot-scale h2 {
-  flex: 1 1 auto;
+  justify-self: start;
   min-width: 0;
   margin: 0;
   font-size: 13px;
@@ -447,22 +446,19 @@ html.standalone .app {
   color: var(--secondary);
 }
 
-.plot-scale-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
-}
+.plot-scale > .units { justify-self: center; }
 
 .plot-max[hidden] { display: none; }
 
 .plot-max {
+  justify-self: end;
   display: flex;
   align-items: baseline;
   gap: 4px;
+  min-width: 0;
   color: var(--text);
-  font-size: 22px;
-  line-height: 26px;
+  font-size: 13px;
+  line-height: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
