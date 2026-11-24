@@ -26,6 +26,7 @@ const DEFAULTS = {
   paperYd: 50,
   closeYd: 5,
   farYd: 100,
+  plotCustom: false,
   plotMaxYd: null,
 };
 
@@ -102,6 +103,8 @@ function sanitize(data) {
     data.plotMaxYd == null || data.plotMaxYd === ""
       ? null
       : clampNum(data.plotMaxYd, 5, MAX_YD, null);
+  if (data.plotCustom === true || data.plotCustom === false) next.plotCustom = data.plotCustom;
+  else next.plotCustom = next.plotMaxYd != null;
   next.weightGr = clampNum(data.weightGr, 15, 500, DEFAULTS.weightGr);
   next.bc = data.bc == null || data.bc === "" ? null : clampNum(data.bc, 0.05, 1.5, null);
   if (typeof data.caliber === "string" && data.caliber.trim()) next.caliber = data.caliber.slice(0, 40);
@@ -443,14 +446,12 @@ function drawTarget(closeIn, farIn) {
   $("target-caption").textContent = `Center is the aim point. Outer ring is ${ring.label}.`;
 }
 
-let plotAutoReach = 100;
-
 function plotReach(poi) {
   return Math.max(poi ? poi.reachYd : 0, state.farYd, state.closeYd, 25);
 }
 
 function plotXMax(poi) {
-  if (state.plotMaxYd == null) return plotReach(poi) * 1.06;
+  if (!state.plotCustom || state.plotMaxYd == null) return plotReach(poi) * 1.06;
   return state.plotMaxYd;
 }
 
@@ -508,7 +509,10 @@ function drawPath(poi) {
   const xOf = (yd) => pad.l + (yd / xMax) * plotW;
   const yOf = (inches) => pad.t + ((yMax - inches) / (yMax - yMin)) * plotH;
   const ends = extremaInRange(poi);
-  const curve = thinSamples(shown, [poi.climbYd, poi.fallYd, state.closeYd, state.farYd, ends?.min.yd, ends?.max.yd]).map((point) => ({
+  const curve = thinSamples(
+    shown,
+    [poi.climbYd, poi.fallYd, state.closeYd, state.farYd, ends?.min.yd, ends?.max.yd].filter((yd) => onAxis(yd)),
+  ).map((point) => ({
     x: xOf(point.yd),
     y: yOf(point.inches),
   }));
@@ -727,7 +731,11 @@ function drawPath(poi) {
 
   const rawTicks = [{ yd: 0, x: pad.l, role: "", kind: "zero" }];
   for (const mark of marked) rawTicks.push({ yd: mark.yd, x: mark.x, role: mark.role, kind: mark.kind });
-  if (state.plotMaxYd != null) rawTicks.push({ yd: xMax, x: xOf(xMax), role: "", kind: "end" });
+  if (state.plotCustom && state.plotMaxYd != null) {
+    const endX = xOf(xMax);
+    const crowded = rawTicks.some((tick) => Math.abs(tick.x - endX) < 36);
+    if (!crowded) rawTicks.push({ yd: xMax, x: endX, role: "", kind: "end" });
+  }
   rawTicks.sort((a, b) => a.x - b.x);
   const ticks = [];
   for (const tick of rawTicks) {
@@ -1243,14 +1251,12 @@ function render() {
   setIfIdle("sight", formatSight(state.sightIn));
   setIfIdle("zero", formatDistanceNumber(state.zeroYd));
   setIfIdle("paper", formatDistanceNumber(state.paperYd));
-  plotAutoReach = poi ? plotReach(poi) : Math.max(state.farYd, state.closeYd, 25);
-  const plotAuto = state.plotMaxYd == null;
-  $("plot-auto").setAttribute("aria-pressed", plotAuto ? "true" : "false");
-  $("plot-unit").textContent = plotAuto ? "" : unit;
-  setIfIdle("plot-max", plotAuto ? "Auto" : formatDistanceNumber(state.plotMaxYd));
-  const plotShown = plotAuto ? null : displayDistance(state.plotMaxYd);
-  $("plot-dec").disabled = plotShown != null && plotShown <= displayDistance(5);
-  $("plot-inc").disabled = plotShown != null && plotShown >= displayDistance(MAX_YD);
+  const plotCustom = state.plotCustom === true;
+  $("plot-auto").setAttribute("aria-checked", plotCustom ? "false" : "true");
+  $("plot-custom").setAttribute("aria-checked", plotCustom ? "true" : "false");
+  $("plot-max-field").hidden = !plotCustom;
+  $("plot-unit").textContent = unit;
+  setIfIdle("plot-max", state.plotMaxYd == null ? "" : formatDistanceNumber(state.plotMaxYd));
 
   if (poi) {
     drawTarget(closeIn, farIn);
@@ -1566,21 +1572,21 @@ function wire() {
   onNumber("close", (n) => (metric() ? n / 0.9144 : n), distanceBounds, assignClose);
   onNumber("far", (n) => (metric() ? n / 0.9144 : n), distanceBounds, assignFar);
   onNumber("plot-max", (n) => (metric() ? n / 0.9144 : n), () => [5, MAX_YD], (yards) => {
+    state.plotCustom = true;
     state.plotMaxYd = yards;
   });
-  const stepPlot = (direction) => {
-    const base = state.plotMaxYd == null ? plotAutoReach * 1.06 : state.plotMaxYd;
-    state.plotMaxYd = stepShown(base, direction, 5, MAX_YD);
-    save();
-    render();
-  };
   $("plot-auto").addEventListener("click", () => {
-    state.plotMaxYd = null;
+    if (!state.plotCustom) return;
+    state.plotCustom = false;
     save();
     render();
   });
-  $("plot-dec").addEventListener("click", () => stepPlot(-1));
-  $("plot-inc").addEventListener("click", () => stepPlot(1));
+  $("plot-custom").addEventListener("click", () => {
+    if (state.plotCustom) return;
+    state.plotCustom = true;
+    save();
+    render();
+  });
   $("zero-dec").addEventListener("click", () => {
     const [min, max] = zeroBounds();
     state.zeroYd = stepShown(state.zeroYd, -1, min, max);

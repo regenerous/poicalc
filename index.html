@@ -178,15 +178,16 @@
           <svg id="path" viewBox="0 0 356 156" role="img"></svg>
         </div>
         <div class="plot-scale">
-          <span class="plot-scale-name">Plot to</span>
-          <button type="button" id="plot-auto" aria-pressed="true">Auto</button>
-          <div class="stepper">
-            <button type="button" id="plot-dec" aria-label="Shorter plot distance">−</button>
-            <label class="dist-readout">
+          <h2>Plot to</h2>
+          <div class="plot-scale-controls">
+            <div class="units" role="radiogroup" aria-label="Plot distance">
+              <button type="button" id="plot-auto" role="radio" aria-checked="true">Auto</button>
+              <button type="button" id="plot-custom" role="radio" aria-checked="false">Custom</button>
+            </div>
+            <label class="plot-max" id="plot-max-field" hidden>
               <input id="plot-max" inputmode="decimal" autocomplete="off" aria-label="Maximum plot distance">
               <span id="plot-unit"></span>
             </label>
-            <button type="button" id="plot-inc" aria-label="Longer plot distance">+</button>
           </div>
         </div>
       </section>

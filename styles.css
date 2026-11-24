@@ -430,46 +430,52 @@ html.standalone .app {
 .plot-scale {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 2px 12px 8px;
+  padding: 4px 12px 2px;
 }
 
-.plot-scale-name {
-  flex: 0 0 auto;
-  font-size: 11px;
-  line-height: 14px;
+.plot-scale h2 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 16px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--secondary);
 }
 
-#plot-auto {
+.plot-scale-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex: 0 0 auto;
-  min-height: 32px;
-  padding: 4px 8px;
-  border: 1px solid var(--stroke-strong);
-  border-radius: 8px;
-  background: var(--fill);
-  font-size: 13px;
-  line-height: 16px;
+}
+
+.plot-max[hidden] { display: none; }
+
+.plot-max {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--text);
+  font-size: 22px;
+  line-height: 26px;
   font-weight: 700;
-  color: var(--secondary);
+  font-variant-numeric: tabular-nums;
 }
 
-#plot-auto[aria-pressed="true"] {
-  background: var(--text);
-  border-color: var(--text);
-  color: var(--bg);
-}
-
-.plot-scale .stepper { margin-left: auto; }
-
-.plot-scale .dist-readout { color: var(--text); }
-
-.plot-scale .stepper > button {
-  width: 40px;
-  height: 40px;
+.plot-max input {
+  width: 6ch;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: right;
+  font: inherit;
+  color: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 #path {
